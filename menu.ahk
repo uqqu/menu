@@ -12,15 +12,7 @@ IfExist, %icon%
     Menu, Tray, Icon, %icon%, , 1
 }
 
-Global EXT
-If A_IsCompiled
-{
-    EXT := ".exe"
-}
-Else
-{
-    EXT := ".ahk"
-}
+Global EXT := A_IsCompiled ? ".exe" : ".ahk"
 
 ;main config.ini variables
 Global MUS_CHECK_DELAY
@@ -50,12 +42,18 @@ Else
 
 IfExist, %QPHYX_PATH%config.ini
 {
+    Global USER_KEY_1
+    Global USER_KEY_2
     Global LATIN_MODE
     Global CYRILLIC_MODE
+    Global QPHYX_DOTLESS_I
     Global QPHYX_DISABLE
     Global QPHYX_LONG_TIME
+    IniRead, USER_KEY_1,        %QPHYX_PATH%config.ini, Configuration, UserKey1
+    IniRead, USER_KEY_2,        %QPHYX_PATH%config.ini, Configuration, UserKey2
     IniRead, LATIN_MODE,        %QPHYX_PATH%config.ini, Configuration, LatinMode
     IniRead, CYRILLIC_MODE,     %QPHYX_PATH%config.ini, Configuration, CyrillicMode
+    IniRead, QPHYX_DOTLESS_I,   %QPHYX_PATH%config.ini, Configuration, DotlessISwap
     IniRead, QPHYX_DISABLE,     %QPHYX_PATH%config.ini, Configuration, QphyxDisable
     IniRead, QPHYX_LONG_TIME,   %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
 }
@@ -609,6 +607,15 @@ If QPHYX_LONG_TIME
             Menu, CyrModes, Check, % CYR_MODE_LIST[CYRILLIC_MODE+1]
         Menu, QphyxSettings, Add, Change latin mode, :LatModes
         Menu, QphyxSettings, Add, Change cyrillic mode, :CyrModes
+        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
+        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
+        Menu, QphyxSettings, Add, Change first user-defined key (now is %key1%), ChangeUserKey
+        Menu, QphyxSettings, Add, Change second user-defined key (now is %key2%), ChangeUserKey
+        Menu, QphyxSettings, Add, Toggle "dotless i" feature, QphyxDotlessI
+        If QPHYX_DOTLESS_I
+        {
+            Menu, QphyxSettings, Check, Toggle "dotless i" feature
+        }
         ;global QPHYX_DISABLE bool
         Menu, QphyxSettings, Add, Disa&ble qPhyx (sh+tilde to toggle), QphyxDisable
         ;global QPHYX_LONG_TIME int
@@ -722,6 +729,35 @@ CyrModeChange(_, item_pos)
     Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
 }
 
+ChangeUserKey(item_name)
+{
+    InputBox, user_input, Set new value for user-defined key (two left keys from old backspace)
+        , New value (recommended is currency symbol or code). It can be severad symbols.
+        , , 555, 130
+    If !ErrorLevel
+    {
+        key_pos := (SubStr(item_name, 8, 1) == "f") ? 1 : 2
+        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
+        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
+        Menu, QphyxSettings, Delete, Change first user-defined key (now is %key1%)
+        Menu, QphyxSettings, Delete, Change second user-defined key (now is %key2%)
+        Menu, QphyxSettings, Delete, Toggle "dotless i" feature
+        Menu, QphyxSettings, Delete, Disa&ble qPhyx (sh+tilde to toggle)
+        Menu, QphyxSettings, Delete, &Long press delay (now is %QPHYX_LONG_TIME%s)
+        IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, UserKey%key_pos%
+        USER_KEY_%key_pos% := user_input
+        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
+        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
+        Menu, QphyxSettings, Add, Change first user-defined key (now is %key1%), ChangeUserKey
+        Menu, QphyxSettings, Add, Change second user-defined key (now is %key2%), ChangeUserKey
+        Menu, QphyxSettings, Add, Toggle "dotless i" feature, QphyxDotlessI
+        Menu, QphyxSettings, Add, Disa&ble qPhyx (sh+tilde to toggle), QphyxDisable
+        Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
+        Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+    }
+    Return
+}
+
 ;detect current spotify process
 SpotifyDetectProcessId()
 {
@@ -750,14 +786,7 @@ Compare()
     Sleep, SLEEP_DELAY
     SendInput ^{SC02E}
     Sleep, SLEEP_DELAY
-    If (Clipboard == saved_value)
-    {
-        result := "Identical"
-    }
-    Else
-    {
-        result := "Not identical"
-    }
+    result := (Clipboard == saved_value) ? "Identical" : "Not identical"
     Sleep, SLEEP_DELAY
     Clipboard := saved_value
     Msgbox, , Message, %result%
@@ -1284,21 +1313,20 @@ Alarma:
     SetTimer, Alarma, Off
     Return
 
+QphyxDotlessI:
+    QPHYX_DOTLESS_I := !QPHYX_DOTLESS_I
+    IniWrite % QPHYX_DOTLESS_I, %QPHYX_PATH%config.ini, Configuration, DotlessISwap
+    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+    Return
+
 QphyxDisable:
-    If QPHYX_DISABLE
-    {
-        IniWrite, 0, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
-    }
-    Else
-    {
-        IniWrite, 1, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
-    }
     QPHYX_DISABLE := !QPHYX_DISABLE
+    IniWrite % QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
     Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
     Return
 
 QphyxLongPress:
-    InputBox, user_input, Set new long press delay (only for this session!)
+    InputBox, user_input, Set new long press delay
         , New value in seconds (e.g. 0.15), , 444, 130
     If !ErrorLevel
     {
@@ -1322,7 +1350,7 @@ QphyxLongPress:
     Return
 
 MusTimer:
-    InputBox, user_input, Set new auto-stop music on AFK delay (only for this session!)
+    InputBox, user_input, Set new auto-stop music on AFK delay
         , New value in minutes (e.g. 10), , 444, 130
     If !ErrorLevel
     {
