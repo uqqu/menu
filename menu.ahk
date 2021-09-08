@@ -1,4 +1,4 @@
-﻿;===============================================================================================
+;===============================================================================================
 ;============================================Presets============================================
 ;===============================================================================================
 
@@ -50,8 +50,12 @@ Else
 
 IfExist, %QPHYX_PATH%config.ini
 {
+    Global LATIN_MODE
+    Global CYRILLIC_MODE
     Global QPHYX_DISABLE
     Global QPHYX_LONG_TIME
+    IniRead, LATIN_MODE,        %QPHYX_PATH%config.ini, Configuration, LatinMode
+    IniRead, CYRILLIC_MODE,     %QPHYX_PATH%config.ini, Configuration, CyrillicMode
     IniRead, QPHYX_DISABLE,     %QPHYX_PATH%config.ini, Configuration, QphyxDisable
     IniRead, QPHYX_LONG_TIME,   %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
 }
@@ -69,6 +73,20 @@ RegRead, CITY, HKEY_CURRENT_USER\Environment, CITY
 Global MUTE := 0
 Global SPOTIFY := 0
 SpotifyDetectProcessId() ; fill SPOTIFY value
+
+Global LAT_MODE_LIST := ["Main mode"
+    , "Turkish", "Polish", "Romanian", "Hungarian", "Slovene, Croatian (Gaj's latin), Romany"
+    , "Lithuanian", "Luxembourgish, Uyghur", "Kurdish (Hawar alphabet)", "Twi, Yoruba (Benin), ..."
+    , "Hausa", "Latvian, Maori, Samoan, Niuean", "Igbo", "Irish, Luba-Katanga, Sundanese", "Venda"
+    , "Old English, Icelandic", "Mossi", "Fula", "Maltese", "Northern Sotho, Albanian", "Kazakh"
+    , "Southern-Berber, Kanuri", "Haitian, Javanese, Kikuyu", "Uzbek", "Azerbaijani, (Turkish)"
+    , "Estonian", "Urdu", "Esperanto", "Western Frisian", "Northern Sami"
+    , "Volta–Niger languages (Yoruba, Igbo, ...)"]
+Global CYR_MODE_LIST := ["Ukrainian, Belarusian, Caucasian, ..."
+    , "Serbian, Montenegrin, Interslavic, ..."
+    , "Kazakh, Mongolian, Uzbek, Tajik, ..."
+    , "Bashkir, Chuvash, Tatar, ..."
+    , "Abkhazian"]
 
 ;music control label (auto pause music on long afk; auto mute volume when advertisement)
 SetTimer, Idle, %MUS_CHECK_DELAY%
@@ -342,10 +360,6 @@ Menu, Func, Add, Message menu, Pass
 Menu, Func, ToggleEnable, Message menu
 Menu, Func, Icon, Message menu, %A_AhkPath%, -207
 
-compare_msg := Func("Compare")
-Menu, Func, Add, C&ompare selected with clipboard, % compare_msg
-Menu, Func, Add
-
 ;"clipboard text as input; message box as output" submenu
     normalize_c_msg   := Func("@ClipMsg").Bind("Normalize")
     capitaliz_c_msg   := Func("@ClipMsg").Bind("Capitalized")
@@ -561,11 +575,17 @@ Menu, Func, Add, &Datetime, :DatetimeM
     Menu, RatesM, Add, &EUR–USD, % eur_usd_r_m
 Menu, Func, Add, E&xchange rate, :RatesM
 
+;weather
 weather_msg := Func("@ClipMsg").Bind(Func("Weather").Bind(CITY))
 Menu, Func, Add, Current &weather, % weather_msg
 
 ;reminder
 Menu, Func, Add, &Reminder, Reminder
+
+;compare
+compare_msg := Func("Compare")
+Menu, Func, Add, C&ompare selected with clipboard, % compare_msg
+Menu, Func, Add
 
 Menu, Func, Add
 Menu, Func, Add
@@ -573,15 +593,28 @@ Menu, Func, Add, Settings, Pass
 Menu, Func, ToggleEnable, Settings
 Menu, Func, Icon, Settings, %A_AhkPath%, -206
 
-If QPHYX_LONG_TIME
-{
-    ;global QPHYX_DISABLE bool
-    Menu, Func, Add, Disa&ble (sh+tilde to toggle), QphyxDisable
-    ;global QPHYX_LONG_TIME int
-    Menu, Func, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-}
 ;global MUS_PAUSE_DELAY int
 Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
+If QPHYX_LONG_TIME
+{
+    For _, wording in LAT_MODE_LIST
+    {
+            Menu, LatModes, Add, %wording%, LatModeChange
+    }
+    For _, wording in CYR_MODE_LIST
+    {
+            Menu, CyrModes, Add, %wording%, CyrModeChange
+    }
+            Menu, LatModes, Check, % LAT_MODE_LIST[LATIN_MODE+1]
+            Menu, CyrModes, Check, % CYR_MODE_LIST[CYRILLIC_MODE+1]
+        Menu, QphyxSettings, Add, Change latin mode, :LatModes
+        Menu, QphyxSettings, Add, Change cyrillic mode, :CyrModes
+        ;global QPHYX_DISABLE bool
+        Menu, QphyxSettings, Add, Disa&ble qPhyx (sh+tilde to toggle), QphyxDisable
+        ;global QPHYX_LONG_TIME int
+        Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
+    Menu, Func, Add, Qphyx settings, :QphyxSettings
+}
 
 
 ;===============================================================================================
@@ -671,6 +704,22 @@ Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusT
 SendValue(value)
 {
     SendInput %value%
+}
+
+LatModeChange(_, item_pos)
+{
+    IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, LatinMode
+    Menu, LatModes, Uncheck, % LAT_MODE_LIST[LATIN_MODE+1]
+    Menu, LatModes, Check, % LAT_MODE_LIST[item_pos]
+    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+}
+
+CyrModeChange(_, item_pos)
+{
+    IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, CyrillicMode
+    Menu, CyrModes, Uncheck, % CYR_MODE_LIST[CYRILLIC_MODE+1]
+    Menu, CyrModes, Check, % CYR_MODE_LIST[item_pos]
+    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
 }
 
 ;detect current spotify process
@@ -1255,12 +1304,10 @@ QphyxLongPress:
     {
         If user_input is number
         {
-            Menu, Func, Delete, &Long press delay (now is %QPHYX_LONG_TIME%s)
-            Menu, Func, Delete, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m)
+            Menu, QphyxSettings, Delete, &Long press delay (now is %QPHYX_LONG_TIME%s)
             IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
             QPHYX_LONG_TIME := user_input
-            Menu, Func, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-            Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
+            Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
             Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
         }
         Else
@@ -1282,9 +1329,11 @@ MusTimer:
         If user_input is number
         {
             Menu, Func, Delete, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m)
+            Menu, Func, Delete, Qphyx settings
             IniWrite, %user_input%, %INI%, Configuration, MusPauseDelay
             MUS_PAUSE_DELAY := user_input
             Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
+            Menu, Func, Add, Qphyx settings, :QphyxSettings
         }
         Else
         {
@@ -1421,11 +1470,11 @@ DeleteSavedValue:
     {
         If QPHYX_DISABLE
         {
-            Menu, Func, Check, Disa&ble (sh+tilde to toggle)
+            Menu, QphyxSettings, Check, Disa&ble qPhyx (sh+tilde to toggle)
         }
         Else If (QPHYX_DISABLE == 0)
         {
-            Menu, Func, Uncheck, Disa&ble (sh+tilde to toggle)
+            Menu, QphyxSettings, Uncheck, Disa&ble qPhyx (sh+tilde to toggle)
         }
         Menu, Func,  Show, %A_CaretX%, %A_CaretY%
     }
