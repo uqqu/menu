@@ -17,7 +17,6 @@ Global EXT := A_IsCompiled ? ".exe" : ".ahk"
 ;main config.ini variables
 Global MUS_CHECK_DELAY
 Global MUS_PAUSE_DELAY
-Global SLEEP_DELAY
 Global NIRCMD_FILE
 Global QPHYX_PATH
 
@@ -26,7 +25,6 @@ IfExist, %INI%
 {
     IniRead, MUS_CHECK_DELAY,   %INI%, Configuration, MusCheckDelay
     IniRead, MUS_PAUSE_DELAY,   %INI%, Configuration, MusPauseDelay
-    IniRead, SLEEP_DELAY,       %INI%, Configuration, SleepDelay
     IniRead, NIRCMD_FILE,       %INI%, Configuration, NircmdFile
     IniRead, QPHYX_PATH,        %INI%, Configuration, QphyxPath
 }
@@ -34,9 +32,9 @@ Else
 {
     IniWrite, 666,              %INI%, Configuration, MusCheckDelay
     IniWrite, 10,               %INI%, Configuration, MusPauseDelay
-    IniWrite, 33,               %INI%, Configuration, SleepDelay
     IniWrite, nircmd.exe,       %INI%, Configuration, NircmdFile
     IniWrite, c:\layout\,       %INI%, Configuration, QphyxPath
+    IniWrite, 1,                %INI%, CurrencyPairs, USD:EUR
     Run, menu%EXT%
 }
 
@@ -103,14 +101,20 @@ IniRead, section, %INI%, SavedValue
 For ind, pair in StrSplit(section, "`n")
 {
     values := StrSplit(pair, "=")
-    option%ind% := Func("SendValue").Bind(values[2])
-    Menu, Values, Add, % values[1], % option%ind%
+    saved_value%ind% := Func("SendValue").Bind(values[2])
+    Menu, Values, Add, % values[1], % saved_value%ind%
 }
 Menu, Values, Add
 Menu, Values, Add, Add new value, AddSavedValue
 Menu, Values, Add, Delete existing value, DeleteSavedValue
 
 Menu, Paste, Add, Saved &values, :Values
+
+;uniform edit currency sub-sub-sub-menu
+            Menu, ManageCurrency, Add, Add currency pair, AddCurrencyPair
+            Menu, ManageCurrency, Add, Delete currency pair, DeleteCurrencyPair
+            Menu, ManageCurrency, Add, Add currency for auto-detect, AddCurrency
+            Menu, ManageCurrency, Add, Delete currency for auto-detect, DeleteCurrency
 
 ;"clipboard as input; paste as output" submenu
     normalize_clip   := Func("@Clip").Bind("Normalize")
@@ -144,30 +148,29 @@ Menu, Paste, Add, Saved &values, :Values
     Menu, Clip, Add, C&alculate the expression, % calc_expr_clip
     Menu, Clip, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_clip
     ;currency converter submenu
-        usd_rub_c_c  := Func("@Clip").Bind(Func("ExchRates").Bind("USD", "RUB", 0))
-        rub_usd_c_c  := Func("@Clip").Bind(Func("ExchRates").Bind("RUB", "USD", 0))
-        uah_usd_c_c  := Func("@Clip").Bind(Func("ExchRates").Bind("UAH", "USD", 0))
-        usd_uah_c_c  := Func("@Clip").Bind(Func("ExchRates").Bind("USD", "UAH", 0))
-        rub_uah_c_c  := Func("@Clip").Bind(Func("ExchRates").Bind("RUB", "UAH", 0))
-        uah_rub_c_c  := Func("@Clip").Bind(Func("ExchRates").Bind("UAH", "RUB", 0))
-        usd_eur_c_c  := Func("@Clip").Bind(Func("ExchRates").Bind("USD", "EUR", 0))
-        eur_usd_c_c  := Func("@Clip").Bind(Func("ExchRates").Bind("EUR", "USD", 0))
-        unk_to_usd_c := Func("@Clip").Bind(Func("UnknownCurrency").Bind("USD"))
-        unk_to_rub_c := Func("@Clip").Bind(Func("UnknownCurrency").Bind("RUB"))
-        Menu, ConvC, Add, &USD–RUB, % usd_rub_c_c
-        Menu, ConvC, Add, &RUB–USD, % rub_usd_c_c
+        IniRead, section, %INI%, CurrencyPairs
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            currencies := StrSplit(values[1], ":")
+            paste_clip_cur%ind% := Func("@Clip")
+                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
+            Menu, ConvC, Add, % values[2], % paste_clip_cur%ind%
+            If (SubStr(currencies[2], 4, 1) == "|")
+            {
+                Menu, ConvC, Add
+            }
+        }
         Menu, ConvC, Add
-        Menu, ConvC, Add, U&SD–UAH, % usd_uah_c_c
-        Menu, ConvC, Add, UA&H–USD, % uah_usd_c_c
+        IniRead, section, %INI%, ToCurrency
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            unk_to_%values1%_p_c := Func("@Clip").Bind(Func("UnknownCurrency").Bind(values[1]))
+            Menu, ConvC, Add, % values[2], % unk_to_%values1%_p_c
+        }
         Menu, ConvC, Add
-        Menu, ConvC, Add, U&AH–RUB, % uah_rub_c_c
-        Menu, ConvC, Add, RU&B–UAH, % rub_uah_c_c
-        Menu, ConvC, Add
-        Menu, ConvC, Add, US&D–EUR, % usd_eur_c_c
-        Menu, ConvC, Add, &EUR–USD, % eur_usd_c_c
-        Menu, ConvC, Add
-        Menu, ConvC, Add, ... &to USD, % unk_to_usd_c
-        Menu, ConvC, Add, ... t&o RUB, % unk_to_rub_c
+        Menu, ConvC, Add, &Manage currencies, :ManageCurrency
     Menu, Clip, Add, Currenc&y converter, :ConvC
 Menu, Paste, Add, &Clipboard text transform, :Clip
 
@@ -203,30 +206,29 @@ Menu, Paste, Add, &Clipboard text transform, :Clip
     Menu, Sel, Add, C&alculate the expression, % calc_expr_sel
     Menu, Sel, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_sel
     ;currency converter submenu
-        usd_rub_c_s  := Func("@Sel").Bind(Func("ExchRates").Bind("USD", "RUB", 0))
-        rub_usd_c_s  := Func("@Sel").Bind(Func("ExchRates").Bind("RUB", "USD", 0))
-        uah_usd_c_s  := Func("@Sel").Bind(Func("ExchRates").Bind("UAH", "USD", 0))
-        usd_uah_c_s  := Func("@Sel").Bind(Func("ExchRates").Bind("USD", "UAH", 0))
-        rub_uah_c_s  := Func("@Sel").Bind(Func("ExchRates").Bind("RUB", "UAH", 0))
-        uah_rub_c_s  := Func("@Sel").Bind(Func("ExchRates").Bind("UAH", "RUB", 0))
-        usd_eur_c_s  := Func("@Sel").Bind(Func("ExchRates").Bind("USD", "EUR", 0))
-        eur_usd_c_s  := Func("@Sel").Bind(Func("ExchRates").Bind("EUR", "USD", 0))
-        unk_to_usd_s := Func("@Sel").Bind(Func("UnknownCurrency").Bind("USD"))
-        unk_to_rub_s := Func("@Sel").Bind(Func("UnknownCurrency").Bind("RUB"))
-        Menu, ConvS, Add, &USD–RUB, % usd_rub_c_s
-        Menu, ConvS, Add, &RUB–USD, % rub_usd_c_s
+        IniRead, section, %INI%, CurrencyPairs
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            currencies := StrSplit(values[1], ":")
+            paste_sel_cur%ind% := Func("@Sel")
+                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
+            Menu, ConvS, Add, % values[2], % paste_sel_cur%ind%
+            If (SubStr(currencies[2], 4, 1) == "|")
+            {
+                Menu, ConvS, Add
+            }
+        }
         Menu, ConvS, Add
-        Menu, ConvS, Add, U&SD–UAH, % usd_uah_c_s
-        Menu, ConvS, Add, UA&H–USD, % uah_usd_c_s
+        IniRead, section, %INI%, ToCurrency
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            unk_to_%values1%_p_s := Func("@Sel").Bind(Func("UnknownCurrency").Bind(values[1]))
+            Menu, ConvS, Add, % values[2], % unk_to_%values1%_p_s
+        }
         Menu, ConvS, Add
-        Menu, ConvS, Add, U&AH–RUB, % uah_rub_c_s
-        Menu, ConvS, Add, RU&B–UAH, % rub_uah_c_s
-        Menu, ConvS, Add
-        Menu, ConvS, Add, US&D–EUR, % usd_eur_c_s
-        Menu, ConvS, Add, &EUR–USD, % eur_usd_c_s
-        Menu, ConvS, Add
-        Menu, ConvS, Add, ... &to USD, % unk_to_usd_s
-        Menu, ConvS, Add, ... t&o RUB, % unk_to_rub_s
+        Menu, ConvS, Add, &Manage currencies, :ManageCurrency
     Menu, Sel, Add, Currenc&y converter, :ConvS
 Menu, Paste, Add, &Selected text transform, :Sel
 
@@ -262,51 +264,50 @@ Menu, Paste, Add, &Selected text transform, :Sel
     Menu, Inp, Add, C&alculate the expression, % calc_expr_inp
     Menu, Inp, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_inp
     ;currency converter submenu
-        usd_rub_c_i  := Func("@Inp").Bind(Func("ExchRates").Bind("USD", "RUB", 0))
-        rub_usd_c_i  := Func("@Inp").Bind(Func("ExchRates").Bind("RUB", "USD", 0))
-        uah_usd_c_i  := Func("@Inp").Bind(Func("ExchRates").Bind("UAH", "USD", 0))
-        usd_uah_c_i  := Func("@Inp").Bind(Func("ExchRates").Bind("USD", "UAH", 0))
-        rub_uah_c_i  := Func("@Inp").Bind(Func("ExchRates").Bind("RUB", "UAH", 0))
-        uah_rub_c_i  := Func("@Inp").Bind(Func("ExchRates").Bind("UAH", "RUB", 0))
-        usd_eur_c_i  := Func("@Inp").Bind(Func("ExchRates").Bind("USD", "EUR", 0))
-        eur_usd_c_i  := Func("@Inp").Bind(Func("ExchRates").Bind("EUR", "USD", 0))
-        unk_to_usd_i := Func("@Inp").Bind(Func("UnknownCurrency").Bind("USD"))
-        unk_to_rub_i := Func("@Inp").Bind(Func("UnknownCurrency").Bind("RUB"))
-        Menu, ConvI, Add, &USD–RUB, % usd_rub_c_i
-        Menu, ConvI, Add, &RUB–USD, % rub_usd_c_i
+        IniRead, section, %INI%, CurrencyPairs
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            currencies := StrSplit(values[1], ":")
+            paste_inp_cur%ind% := Func("@Inp")
+                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
+            Menu, ConvI, Add, % values[2], % paste_inp_cur%ind%
+            If (SubStr(currencies[2], 4, 1) == "|")
+            {
+                Menu, ConvI, Add
+            }
+        }
         Menu, ConvI, Add
-        Menu, ConvI, Add, U&SD–UAH, % usd_uah_c_i
-        Menu, ConvI, Add, UA&H–USD, % uah_usd_c_i
+        IniRead, section, %INI%, ToCurrency
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            unk_to_%values1%_p_i := Func("@Inp").Bind(Func("UnknownCurrency").Bind(values[1]))
+            Menu, ConvI, Add, % values[2], % unk_to_%values1%_p_i
+        }
         Menu, ConvI, Add
-        Menu, ConvI, Add, U&AH–RUB, % uah_rub_c_i
-        Menu, ConvI, Add, RU&B–UAH, % rub_uah_c_i
-        Menu, ConvI, Add
-        Menu, ConvI, Add, US&D–EUR, % usd_eur_c_i
-        Menu, ConvI, Add, &EUR–USD, % eur_usd_c_i
-        Menu, ConvI, Add
-        Menu, ConvI, Add, ... &to USD, % unk_to_usd_i
-        Menu, ConvI, Add, ... t&o RUB, % unk_to_rub_i
+        Menu, ConvI, Add, &Manage currencies, :ManageCurrency
     Menu, Inp, Add, Currenc&y converter, :ConvI
 Menu, Paste, Add, &Input text to transform, :Inp
 Menu, Paste, Add
 
 ;emoji submenu
-    Menu, Emoji, Add, ¯\_(ツ)_/¯ &Shrug, Shrug
-    Menu, Emoji, Add, ( ͡° ͜ʖ ͡°) &Lenny, Lenny
-    Menu, Emoji, Add, ಠoಠ &Dude, Dude
-    Menu, Emoji, Add, ლ(・﹏・ლ) &Why, Why
-    Menu, Emoji, Add, (ง'̀-'́)ง &Fight, Fight
-    Menu, Emoji, Add, ༼ つ ◕_◕ ༽つ &Take My Energy, TakeMyEnergy
-    Menu, Emoji, Add, (╯°□°)╯︵ ┻━┻ &Rage, Rage
-    Menu, Emoji, Add, ┬─┬ノ( º _ ºノ) &Putting Table Back, PuttingTableBack
-    Menu, Emoji, Add, (；一_一) &Ashamed, Ashamed
-    Menu, Emoji, Add, （＾～＾） &Meh, Meh
-    Menu, Emoji, Add, ʕ •ᴥ•ʔ &Koala, Koala
-    Menu, Emoji, Add, (◐‿◑) &Crazy, Crazy
-    Menu, Emoji, Add, (っ⌒‿⌒)っ &Hug, Hug
-    Menu, Emoji, Add, (☉__☉”) &Yikes, Yikes
-    Menu, Emoji, Add, (ﾉﾟ0ﾟ)ﾉ~ w&Ow, wOw
-    Menu, Emoji, Add, ༼ ༎ຶ ෴ ༎ຶ༽ &Upset, Upset
+    Menu, Emoji, Add, ¯\_(ツ)_/¯ &Shrug, Emoji
+    Menu, Emoji, Add, ( ͡° ͜ʖ ͡°) &Lenny, Emoji
+    Menu, Emoji, Add, ಠoಠ &Dude, Emoji
+    Menu, Emoji, Add, ლ(・﹏・ლ) &Why, Emoji
+    Menu, Emoji, Add, (ง'̀-'́)ง &Fight, Emoji
+    Menu, Emoji, Add, ༼ つ ◕_◕ ༽つ &Take My Energy, Emoji
+    Menu, Emoji, Add, (╯°□°)╯︵ ┻━┻ &Rage, Emoji
+    Menu, Emoji, Add, ┬─┬ノ( º _ ºノ) &Putting Table Back, Emoji
+    Menu, Emoji, Add, (；一_一) &Ashamed, Emoji
+    Menu, Emoji, Add, （＾～＾） &Meh, Emoji
+    Menu, Emoji, Add, ʕ •ᴥ•ʔ &Koala, Emoji
+    Menu, Emoji, Add, (◐‿◑) &Crazy, Emoji
+    Menu, Emoji, Add, (っ⌒‿⌒)っ &Hug, Emoji
+    Menu, Emoji, Add, (☉__☉”) &Yikes, Emoji
+    Menu, Emoji, Add, (ﾉﾟ0ﾟ)ﾉ~ w&Ow, Emoji
+    Menu, Emoji, Add, ༼ ༎ຶ ෴ ༎ຶ༽ &Upset, Emoji
 Menu, Paste, Add, &Emoji, :Emoji
 
 ;time submenu
@@ -325,25 +326,21 @@ Menu, Paste, Add, &Emoji, :Emoji
 Menu, Paste, Add, &Datetime, :DatetimeP
 
 ;exchange rates submenu
-    usd_rub_r_p := Func("@Clip").Bind(Func("ExchRates").Bind("USD", "RUB"))
-    rub_usd_r_p := Func("@Clip").Bind(Func("ExchRates").Bind("RUB", "USD"))
-    uah_usd_r_p := Func("@Clip").Bind(Func("ExchRates").Bind("UAH", "USD"))
-    usd_uah_r_p := Func("@Clip").Bind(Func("ExchRates").Bind("USD", "UAH"))
-    rub_uah_r_p := Func("@Clip").Bind(Func("ExchRates").Bind("RUB", "UAH"))
-    uah_rub_r_p := Func("@Clip").Bind(Func("ExchRates").Bind("UAH", "RUB"))
-    usd_eur_r_p := Func("@Clip").Bind(Func("ExchRates").Bind("USD", "EUR"))
-    eur_usd_r_p := Func("@Clip").Bind(Func("ExchRates").Bind("EUR", "USD"))
-    Menu, RatesP, Add, &USD–RUB, % usd_rub_r_p
-    Menu, RatesP, Add, &RUB–USD, % rub_usd_r_p
+    IniRead, section, %INI%, CurrencyPairs
+    For ind, pair in StrSplit(section, "`n")
+    {
+        values := StrSplit(pair, "=")
+        currencies := StrSplit(values[1], ":")
+        paste_rates_cur%ind% := Func("@Clip")
+            .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3)))
+        Menu, RatesP, Add, % values[2], % paste_rates_cur%ind%
+        If (SubStr(currencies[2], 4, 1) == "|")
+        {
+            Menu, RatesP, Add
+        }
+    }
     Menu, RatesP, Add
-    Menu, RatesP, Add, U&SD–UAH, % usd_uah_r_p
-    Menu, RatesP, Add, UA&H–USD, % uah_usd_r_p
-    Menu, RatesP, Add
-    Menu, RatesP, Add, U&AH–RUB, % uah_rub_r_p
-    Menu, RatesP, Add, RU&B–UAH, % rub_uah_r_p
-    Menu, RatesP, Add
-    Menu, RatesP, Add, US&D–EUR, % usd_eur_r_p
-    Menu, RatesP, Add, &EUR–USD, % eur_usd_r_p
+    Menu, RatesP, Add, &Manage currencies, :ManageCurrency
 Menu, Paste, Add, E&xchange rate, :RatesP
 
 weather_pst := Func("@Clip").Bind(Func("Weather").Bind(CITY))
@@ -390,30 +387,29 @@ Menu, Func, Icon, Message menu, %A_AhkPath%, -207
     Menu, ClipMsg, Add, C&alculate the expression, % calc_expr_c_msg
     Menu, ClipMsg, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_c_msg
     ;currency converter submenu
-        usd_rub_c_m_c  := Func("@ClipMsg").Bind(Func("ExchRates").Bind("USD", "RUB", 0))
-        rub_usd_c_m_c  := Func("@ClipMsg").Bind(Func("ExchRates").Bind("RUB", "USD", 0))
-        uah_usd_c_m_c  := Func("@ClipMsg").Bind(Func("ExchRates").Bind("UAH", "USD", 0))
-        usd_uah_c_m_c  := Func("@ClipMsg").Bind(Func("ExchRates").Bind("USD", "UAH", 0))
-        rub_uah_c_m_c  := Func("@ClipMsg").Bind(Func("ExchRates").Bind("RUB", "UAH", 0))
-        uah_rub_c_m_c  := Func("@ClipMsg").Bind(Func("ExchRates").Bind("UAH", "RUB", 0))
-        usd_eur_c_m_c  := Func("@ClipMsg").Bind(Func("ExchRates").Bind("USD", "EUR", 0))
-        eur_usd_c_m_c  := Func("@ClipMsg").Bind(Func("ExchRates").Bind("EUR", "USD", 0))
-        unk_to_usd_m_c := Func("@ClipMsg").Bind(Func("UnknownCurrency").Bind("USD"))
-        unk_to_rub_m_c := Func("@ClipMsg").Bind(Func("UnknownCurrency").Bind("RUB"))
-        Menu, ConvMC, Add, &USD–RUB, % usd_rub_c_m_c
-        Menu, ConvMC, Add, &RUB–USD, % rub_usd_c_m_c
+        IniRead, section, %INI%, CurrencyPairs
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            currencies := StrSplit(values[1], ":")
+            message_clip_cur%ind% := Func("@ClipMsg")
+                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
+            Menu, ConvMC, Add, % values[2], % message_clip_cur%ind%
+            If (SubStr(currencies[2], 4, 1) == "|")
+            {
+                Menu, ConvMC, Add
+            }
+        }
         Menu, ConvMC, Add
-        Menu, ConvMC, Add, U&SD–UAH, % usd_uah_c_m_c
-        Menu, ConvMC, Add, UA&H–USD, % uah_usd_c_m_c
+        IniRead, section, %INI%, ToCurrency
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            unk_to_%values1%_m_c := Func("@ClipMsg").Bind(Func("UnknownCurrency").Bind(values[1]))
+            Menu, ConvMC, Add, % values[2], % unk_to_%values1%_m_c
+        }
         Menu, ConvMC, Add
-        Menu, ConvMC, Add, U&AH–RUB, % uah_rub_c_m_c
-        Menu, ConvMC, Add, RU&B–UAH, % rub_uah_c_m_c
-        Menu, ConvMC, Add
-        Menu, ConvMC, Add, US&D–EUR, % usd_eur_c_m_c
-        Menu, ConvMC, Add, &EUR–USD, % eur_usd_c_m_c
-        Menu, ConvMC, Add
-        Menu, ConvMC, Add, ... &to USD, % unk_to_usd_m_c
-        Menu, ConvMC, Add, ... t&o RUB, % unk_to_rub_m_c
+        Menu, ConvMC, Add, &Manage currencies, :ManageCurrency
     Menu, ClipMsg, Add, Currenc&y converter, :ConvMC
 Menu, Func, Add, &Clipboard text transform, :ClipMsg
 
@@ -449,30 +445,29 @@ Menu, Func, Add, &Clipboard text transform, :ClipMsg
     Menu, SelMsg, Add, C&alculate the expression, % calc_expr_s_msg
     Menu, SelMsg, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_s_msg
     ;currency converter submenu
-        usd_rub_c_m_s  := Func("@SelMsg").Bind(Func("ExchRates").Bind("USD", "RUB", 0))
-        rub_usd_c_m_s  := Func("@SelMsg").Bind(Func("ExchRates").Bind("RUB", "USD", 0))
-        uah_usd_c_m_s  := Func("@SelMsg").Bind(Func("ExchRates").Bind("UAH", "USD", 0))
-        usd_uah_c_m_s  := Func("@SelMsg").Bind(Func("ExchRates").Bind("USD", "UAH", 0))
-        rub_uah_c_m_s  := Func("@SelMsg").Bind(Func("ExchRates").Bind("RUB", "UAH", 0))
-        uah_rub_c_m_s  := Func("@SelMsg").Bind(Func("ExchRates").Bind("UAH", "RUB", 0))
-        usd_eur_c_m_s  := Func("@SelMsg").Bind(Func("ExchRates").Bind("USD", "EUR", 0))
-        eur_usd_c_m_s  := Func("@SelMsg").Bind(Func("ExchRates").Bind("EUR", "USD", 0))
-        unk_to_usd_m_s := Func("@SelMsg").Bind(Func("UnknownCurrency").Bind("USD"))
-        unk_to_rub_m_s := Func("@SelMsg").Bind(Func("UnknownCurrency").Bind("RUB"))
-        Menu, ConvMS, Add, &USD–RUB, % usd_rub_c_m_s
-        Menu, ConvMS, Add, &RUB–USD, % rub_usd_c_m_s
+        IniRead, section, %INI%, CurrencyPairs
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            currencies := StrSplit(values[1], ":")
+            message_sel_cur%ind% := Func("@SelMsg")
+                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
+            Menu, ConvMS, Add, % values[2], % message_sel_cur%ind%
+            If (SubStr(currencies[2], 4, 1) == "|")
+            {
+                Menu, ConvMS, Add
+            }
+        }
         Menu, ConvMS, Add
-        Menu, ConvMS, Add, U&SD–UAH, % usd_uah_c_m_s
-        Menu, ConvMS, Add, UA&H–USD, % uah_usd_c_m_s
+        IniRead, section, %INI%, ToCurrency
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            unk_to_%values1%_m_s := Func("@SelMsg").Bind(Func("UnknownCurrency").Bind(values[1]))
+            Menu, ConvMS, Add, % values[2], % unk_to_%values1%_m_s
+        }
         Menu, ConvMS, Add
-        Menu, ConvMS, Add, U&AH–RUB, % uah_rub_c_m_s
-        Menu, ConvMS, Add, RU&B–UAH, % rub_uah_c_m_s
-        Menu, ConvMS, Add
-        Menu, ConvMS, Add, US&D–EUR, % usd_eur_c_m_s
-        Menu, ConvMS, Add, &EUR–USD, % eur_usd_c_m_s
-        Menu, ConvMS, Add
-        Menu, ConvMS, Add, ... &to USD, % unk_to_usd_m_s
-        Menu, ConvMS, Add, ... t&o RUB, % unk_to_rub_m_s
+        Menu, ConvMS, Add, &Manage currencies, :ManageCurrency
     Menu, SelMsg, Add, Currenc&y converter, :ConvMS
 Menu, Func, Add, &Selected text transform, :SelMsg
 
@@ -508,30 +503,29 @@ Menu, Func, Add, &Selected text transform, :SelMsg
     Menu, InpMsg, Add, C&alculate the expression, % calc_expr_i_msg
     Menu, InpMsg, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_i_msg
     ;currency converter submenu
-        usd_rub_c_m_i  := Func("@InpMsg").Bind(Func("ExchRates").Bind("USD", "RUB", 0))
-        rub_usd_c_m_i  := Func("@InpMsg").Bind(Func("ExchRates").Bind("RUB", "USD", 0))
-        uah_usd_c_m_i  := Func("@InpMsg").Bind(Func("ExchRates").Bind("UAH", "USD", 0))
-        usd_uah_c_m_i  := Func("@InpMsg").Bind(Func("ExchRates").Bind("USD", "UAH", 0))
-        rub_uah_c_m_i  := Func("@InpMsg").Bind(Func("ExchRates").Bind("RUB", "UAH", 0))
-        uah_rub_c_m_i  := Func("@InpMsg").Bind(Func("ExchRates").Bind("UAH", "RUB", 0))
-        usd_eur_c_m_i  := Func("@InpMsg").Bind(Func("ExchRates").Bind("USD", "EUR", 0))
-        eur_usd_c_m_i  := Func("@InpMsg").Bind(Func("ExchRates").Bind("EUR", "USD", 0))
-        unk_to_usd_m_i := Func("@InpMsg").Bind(Func("UnknownCurrency").Bind("USD"))
-        unk_to_rub_m_i := Func("@InpMsg").Bind(Func("UnknownCurrency").Bind("RUB"))
-        Menu, ConvMI, Add, &USD–RUB, % usd_rub_c_m_i
-        Menu, ConvMI, Add, &RUB–USD, % rub_usd_c_m_i
+        IniRead, section, %INI%, CurrencyPairs
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            currencies := StrSplit(values[1], ":")
+            message_inp_cur%ind% := Func("@InpMsg")
+                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
+            Menu, ConvMI, Add, % values[2], % message_inp_cur%ind%
+            If (SubStr(currencies[2], 4, 1) == "|")
+            {
+                Menu, ConvMI, Add
+            }
+        }
         Menu, ConvMI, Add
-        Menu, ConvMI, Add, U&SD–UAH, % usd_uah_c_m_i
-        Menu, ConvMI, Add, UA&H–USD, % uah_usd_c_m_i
+        IniRead, section, %INI%, ToCurrency
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            unk_to_%values1%_m_i := Func("@InpMsg").Bind(Func("UnknownCurrency").Bind(values[1]))
+            Menu, ConvMI, Add, % values[2], % unk_to_%values1%_m_i
+        }
         Menu, ConvMI, Add
-        Menu, ConvMI, Add, U&AH–RUB, % uah_rub_c_m_i
-        Menu, ConvMI, Add, RU&B–UAH, % rub_uah_c_m_i
-        Menu, ConvMI, Add
-        Menu, ConvMI, Add, US&D–EUR, % usd_eur_c_m_i
-        Menu, ConvMI, Add, &EUR–USD, % eur_usd_c_m_i
-        Menu, ConvMI, Add
-        Menu, ConvMI, Add, ... &to USD, % unk_to_usd_m_i
-        Menu, ConvMI, Add, ... t&o RUB, % unk_to_rub_m_i
+        Menu, ConvMI, Add, &Manage currencies, :ManageCurrency
     Menu, InpMsg, Add, Currenc&y converter, :ConvMI
 Menu, Func, Add, &Input text to transform, :InpMsg
 Menu, Func, Add
@@ -552,25 +546,21 @@ Menu, Func, Add
 Menu, Func, Add, &Datetime, :DatetimeM
 
 ;exchange rates submenu
-    usd_rub_r_m := Func("@ClipMsg").Bind(Func("ExchRates").Bind("USD", "RUB"))
-    rub_usd_r_m := Func("@ClipMsg").Bind(Func("ExchRates").Bind("RUB", "USD"))
-    uah_usd_r_m := Func("@ClipMsg").Bind(Func("ExchRates").Bind("UAH", "USD"))
-    usd_uah_r_m := Func("@ClipMsg").Bind(Func("ExchRates").Bind("USD", "UAH"))
-    rub_uah_r_m := Func("@ClipMsg").Bind(Func("ExchRates").Bind("RUB", "UAH"))
-    uah_rub_r_m := Func("@ClipMsg").Bind(Func("ExchRates").Bind("UAH", "RUB"))
-    usd_eur_r_m := Func("@ClipMsg").Bind(Func("ExchRates").Bind("USD", "EUR"))
-    eur_usd_r_m := Func("@ClipMsg").Bind(Func("ExchRates").Bind("EUR", "USD"))
-    Menu, RatesM, Add, &USD–RUB, % usd_rub_r_m
-    Menu, RatesM, Add, &RUB–USD, % rub_usd_r_m
+    IniRead, section, %INI%, CurrencyPairs
+    For ind, pair in StrSplit(section, "`n")
+    {
+        values := StrSplit(pair, "=")
+        currencies := StrSplit(values[1], ":")
+        message_rates_cur%ind% := Func("@ClipMsg")
+            .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
+        Menu, RatesM, Add, % values[2], % message_rates_cur%ind%
+        If (SubStr(currencies[2], 4, 1) == "|")
+        {
+            Menu, RatesM, Add
+        }
+    }
     Menu, RatesM, Add
-    Menu, RatesM, Add, U&SD–UAH, % usd_uah_r_m
-    Menu, RatesM, Add, UA&H–USD, % uah_usd_r_m
-    Menu, RatesM, Add
-    Menu, RatesM, Add, U&AH–RUB, % uah_rub_r_m
-    Menu, RatesM, Add, RU&B–UAH, % rub_uah_r_m
-    Menu, RatesM, Add
-    Menu, RatesM, Add, US&D–EUR, % usd_eur_r_m
-    Menu, RatesM, Add, &EUR–USD, % eur_usd_r_m
+    Menu, RatesM, Add, &Manage currencies, :ManageCurrency
 Menu, Func, Add, E&xchange rate, :RatesM
 
 ;weather
@@ -593,6 +583,7 @@ Menu, Func, Icon, Settings, %A_AhkPath%, -206
 
 ;global MUS_PAUSE_DELAY int
 Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
+
 If QPHYX_LONG_TIME
 {
     For _, wording in LAT_MODE_LIST
@@ -625,10 +616,9 @@ If QPHYX_LONG_TIME
 
 
 ;===============================================================================================
-;===========================================Tools functions=====================================
+;===========================================Decorators==========================================
 ;===============================================================================================
 
-;decorators
 @Clip(func, params*)
 {
     result := %func%(params)
@@ -637,9 +627,8 @@ If QPHYX_LONG_TIME
 @Sel(func, params*)
 {
     saved_value := Clipboard
-    Sleep, SLEEP_DELAY
     SendInput ^{SC02E}
-    Sleep, SLEEP_DELAY
+    Sleep, 1
     result := %func%(params)
     SendInput %result%
     Clipboard := saved_value
@@ -650,9 +639,7 @@ If QPHYX_LONG_TIME
     If !ErrorLevel
     {
         saved_value := Clipboard
-        Sleep, SLEEP_DELAY
         Clipboard := user_input
-        Sleep, SLEEP_DELAY
         result := %func%(params)
         SendInput %result%
         Clipboard := saved_value
@@ -670,11 +657,9 @@ If QPHYX_LONG_TIME
 @SelMsg(func, params*)
 {
     saved_value := Clipboard
-    Sleep, SLEEP_DELAY
     SendInput ^{SC02E}
-    Sleep, SLEEP_DELAY
+    Sleep, 1
     Clipboard := Trim(Clipboard)
-    Sleep, SLEEP_DELAY
     result := %func%(params)
     MsgBox, 260, %func%, %result% `nSave result to clipboard?
     IfMsgBox Yes
@@ -692,9 +677,7 @@ If QPHYX_LONG_TIME
     If !ErrorLevel
     {
         saved_value := Clipboard
-        Sleep, SLEEP_DELAY
         Clipboard := user_input
-        Sleep, SLEEP_DELAY
         result := %func%(params)
         MsgBox, 260, %func%, %result% `nSave result to clipboard?
         IfMsgBox Yes
@@ -708,56 +691,15 @@ If QPHYX_LONG_TIME
     }
 }
 
+
+;===============================================================================================
+;===========================================Tool functions======================================
+;===============================================================================================
+
 SendValue(value)
 {
     SendInput %value%
 }
-
-LatModeChange(_, item_pos)
-{
-    IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, LatinMode
-    Menu, LatModes, Uncheck, % LAT_MODE_LIST[LATIN_MODE+1]
-    Menu, LatModes, Check, % LAT_MODE_LIST[item_pos]
-    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
-}
-
-CyrModeChange(_, item_pos)
-{
-    IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, CyrillicMode
-    Menu, CyrModes, Uncheck, % CYR_MODE_LIST[CYRILLIC_MODE+1]
-    Menu, CyrModes, Check, % CYR_MODE_LIST[item_pos]
-    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
-}
-
-ChangeUserKey(item_name)
-{
-    InputBox, user_input, Set new value for user-defined key (two left keys from old backspace)
-        , New value (recommended is currency symbol or code). It can be severad symbols.
-        , , 555, 130
-    If !ErrorLevel
-    {
-        key_pos := (SubStr(item_name, 8, 1) == "f") ? 1 : 2
-        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
-        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
-        Menu, QphyxSettings, Delete, Change first user-defined key (now is %key1%)
-        Menu, QphyxSettings, Delete, Change second user-defined key (now is %key2%)
-        Menu, QphyxSettings, Delete, Toggle "dotless i" feature
-        Menu, QphyxSettings, Delete, Disa&ble qPhyx (sh+tilde to toggle)
-        Menu, QphyxSettings, Delete, &Long press delay (now is %QPHYX_LONG_TIME%s)
-        IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, UserKey%key_pos%
-        USER_KEY_%key_pos% := user_input
-        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
-        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
-        Menu, QphyxSettings, Add, Change first user-defined key (now is %key1%), ChangeUserKey
-        Menu, QphyxSettings, Add, Change second user-defined key (now is %key2%), ChangeUserKey
-        Menu, QphyxSettings, Add, Toggle "dotless i" feature, QphyxDotlessI
-        Menu, QphyxSettings, Add, Disa&ble qPhyx (sh+tilde to toggle), QphyxDisable
-        Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-        Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
-    }
-    Return
-}
-
 ;detect current spotify process
 SpotifyDetectProcessId()
 {
@@ -783,11 +725,9 @@ SpotifyDetectProcessId()
 Compare()
 {
     saved_value := Clipboard
-    Sleep, SLEEP_DELAY
     SendInput ^{SC02E}
-    Sleep, SLEEP_DELAY
+    Sleep, 1
     result := (Clipboard == saved_value) ? "Identical" : "Not identical"
-    Sleep, SLEEP_DELAY
     Clipboard := saved_value
     Msgbox, , Message, %result%
 }
@@ -810,6 +750,392 @@ Execute() ; https://www.autohotkey.com/boards/viewtopic.php?p=221460#p221460
             , "false", 0), "true", 1), "undefined", "")
     Return o ;InStr(o, "e") ? Format("{:f}", o) : o
 }
+
+Emoji(item_name)
+{
+    SendInput % RegExReplace(item_name, "i)[ a-z0-9&]*$")
+}
+
+Reminder()
+{
+    InputBox, user_input, Reminder, Remind me in ... minutes, , 200, 130
+    If !ErrorLevel
+    {
+        If user_input is number
+        {
+            delay := user_input * 60000
+            SetTimer, Alarma, %delay%
+        }
+        Else
+        {
+            MsgBox, 53, Incorrect value, The input must be a number!
+            IfMsgBox Retry
+            {
+                Reminder()
+            }
+        }
+    }
+}
+
+Alarma()
+{
+    MsgBox, 48, ALARMA, ALARMA
+    SetTimer, Alarma, Off
+}
+
+
+;===============================================================================================
+;===========================================INI edit============================================
+;===============================================================================================
+
+MusTimer()
+{
+    InputBox, user_input, Set new auto-stop music on AFK delay
+        , New value in minutes (e.g. 10), , 444, 130
+    If !ErrorLevel
+    {
+        If user_input is number
+        {
+            Menu, Func, Delete, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m)
+            Menu, Func, Delete, Qphyx settings
+            IniWrite, %user_input%, %INI%, Configuration, MusPauseDelay
+            MUS_PAUSE_DELAY := user_input
+            Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
+            Menu, Func, Add, Qphyx settings, :QphyxSettings
+        }
+        Else
+        {
+            MsgBox, 53, Incorrect value, The input must be a number!
+            IfMsgBox Retry
+            {
+                MusTimer()
+            }
+        }
+    }
+}
+
+AddSavedValue()
+{
+    message =
+    (
+        Enter name for new value (with "&&" for hotkey)
+Take into account that "test", "&&test" and "tes&&t" are three different values!
+If you enter existing value name it will be overwritten without warning!
+    )
+    InputBox, user_input, New value name, %message%, , 470, 160
+    If !ErrorLevel
+    {
+        InputBox, user_input_2, Value for %user_input%
+            , Enter value for %user_input%`nAll values stored solely in "config.ini", , 444, 160
+        If !ErrorLevel
+        {
+            IniWrite, %user_input_2%, %INI%, SavedValue, %user_input%
+            MsgBox, Success!
+            Run, menu%EXT%
+        }
+    }
+}
+
+DeleteSavedValue()
+{
+    InputBox, user_input, Enter deleting value name
+        , Enter deleting value name (with "&&" if there is), , 470, 140
+    If !ErrorLevel
+    {
+        If !user_input
+        {
+            MsgBox, 53, , Input must be not empty!
+            IfMsgBox Retry
+            {
+                DeleteSavedValue()
+            }
+        }
+        Else
+        {
+            IniDelete, %INI%, SavedValue, %user_input%
+            If !ErrorLevel
+            {
+                MsgBox, Success (or not ¯\_(ツ)_/¯)
+                Run, menu%EXT%
+            }
+            Else
+            {
+                MsgBox, 53, Incorrect value
+                IfMsgBox Retry
+                {
+                    DeleteSavedValue()
+                }
+            }
+        }
+    }
+}
+
+AddCurrencyPair()
+{
+    message =
+    (
+        Enter currency code pair through the ":"
+ISO 4217 format. E.g. USD:EUR
+Add "|" with the last symbol for adittional seperator to menu after this option.
+If you enter existing pair (in the same sequence) it will be overwritten without warning!
+    )
+    InputBox, user_input, Enter currency pair, %message%, , 530, 190
+    If !ErrorLevel
+    {
+        If (!user_input || !(RegExMatch(user_input, "i)^[a-z]{3}:[a-z]{3}\|?$")))
+        {
+            MsgBox, 53, , Incorrect input!
+            IfMsgBox Retry
+            {
+                AddCurrencyPair()
+            }
+        }
+        Else
+        {
+            Loop
+            {
+                InputBox, user_input_2, Option text
+                    , Enter text for menu option (with "&&" for hotkey), , 444, 160
+                If ErrorLevel
+                {
+                    MsgBox, 53, , Incorrect input!
+                    IfMsgBox Retry
+                    {
+                    }
+                    Else
+                    {
+                        Break
+                    }
+                }
+                Else
+                {
+                    StringLower user_input, user_input
+                    IniWrite, %user_input_2%, %INI%, CurrencyPairs, %user_input%
+                    MsgBox, Success!
+                    Run, menu%EXT%
+                }
+            }
+        }
+    }
+}
+
+DeleteCurrencyPair()
+{
+    message =
+    (
+        Enter currency code pair through the ":"
+If you set additional separator with "|" it also must be entered here
+    )
+    InputBox, user_input, Enter currency pair, %message%, , 470, 160
+    If !ErrorLevel
+    {
+        If (!user_input || !(RegExMatch(user_input, "i)^[a-z]{3}:[a-z]{3}\|?$")))
+        {
+            MsgBox, 53, , Incorrect input!
+            IfMsgBox Retry
+            {
+                DeleteCurrencyPair()
+            }
+        }
+        Else
+        {
+            StringLower user_input, user_input
+            IniDelete, %INI%, CurrencyPairs, %user_input%
+            If !ErrorLevel
+            {
+                MsgBox, Success (or not ¯\_(ツ)_/¯)
+                Run, menu%EXT%
+            }
+            Else
+            {
+                MsgBox, 53, Incorrect value
+                IfMsgBox Retry
+                {
+                    DeleteCurrencyPair()
+                }
+            }
+        }
+    }
+}
+
+AddCurrency()
+{
+    message =
+    (
+        Enter currency code in ISO 4217 format. E.g. "USD" or "EUR"
+If you enter existing value it will be overwritten without warning!
+    )
+    InputBox, user_input, Enter currency, %message%, , 530, 190
+    If !ErrorLevel
+    {
+        If (!user_input || !(RegExMatch(user_input, "i)^[a-z]{3}$")))
+        {
+            MsgBox, 53, , Incorrect input!
+            IfMsgBox Retry
+            {
+                AddCurrency()
+            }
+        }
+        Else
+        {
+            Loop
+            {
+                InputBox, user_input_2, Option text
+                    , Enter text for menu option (with "&&" for hotkey), , 444, 160
+                If ErrorLevel
+                {
+                    MsgBox, 53, , Incorrect input!
+                    IfMsgBox Retry
+                    {
+                    }
+                    Else
+                    {
+                        Break
+                    }
+                }
+                Else
+                {
+                    StringLower user_input, user_input
+                    IniWrite, %user_input_2%, %INI%, ToCurrency, %user_input%
+                    MsgBox, Success!
+                    Run, menu%EXT%
+                }
+            }
+        }
+    }
+}
+
+DeleteCurrency()
+{
+    InputBox, user_input, Enter currency code, Enter currency code, , 470, 160
+    If !ErrorLevel
+    {
+        If (!user_input || !(RegExMatch(user_input, "i)^[a-z]{3}$")))
+        {
+            MsgBox, 53, , Incorrect input!
+            IfMsgBox Retry
+            {
+                DeleteCurrency()
+            }
+        }
+        Else
+        {
+            StringLower user_input, user_input
+            IniDelete, %INI%, ToCurrency, %user_input%
+            If !ErrorLevel
+            {
+                MsgBox, Success (or not ¯\_(ツ)_/¯)
+                Run, menu%EXT%
+            }
+            Else
+            {
+                MsgBox, 53, Incorrect value
+                IfMsgBox Retry
+                {
+                    DeleteCurrency()
+                }
+            }
+        }
+    }
+}
+
+
+;===============================================================================================
+;=======================================qPhyx INI edit==========================================
+;===============================================================================================
+
+LatModeChange(_, item_pos)
+{
+    IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, LatinMode
+    Menu, LatModes, Uncheck, % LAT_MODE_LIST[LATIN_MODE+1]
+    Menu, LatModes, Check, % LAT_MODE_LIST[item_pos]
+    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+}
+
+CyrModeChange(_, item_pos)
+{
+    IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, CyrillicMode
+    Menu, CyrModes, Uncheck, % CYR_MODE_LIST[CYRILLIC_MODE+1]
+    Menu, CyrModes, Check, % CYR_MODE_LIST[item_pos]
+    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+}
+
+ChangeUserKey(item_name)
+{
+    message =
+    (
+        New value (recommended is currency symbol or code). It can be several symbols.
+If empty – works as decrement/increment number (be careful with use it on non-textfields!).
+    )
+    InputBox, user_input, Set new value for user-defined key (two left keys from old backspace)
+        , %message%
+        , , 611, 160
+    If !ErrorLevel
+    {
+        key_pos := (SubStr(item_name, 8, 1) == "f") ? 1 : 2
+        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
+        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
+        Menu, QphyxSettings, Delete, Change first user-defined key (now is %key1%)
+        Menu, QphyxSettings, Delete, Change second user-defined key (now is %key2%)
+        Menu, QphyxSettings, Delete, Toggle "dotless i" feature
+        Menu, QphyxSettings, Delete, Disa&ble qPhyx (sh+tilde to toggle)
+        Menu, QphyxSettings, Delete, &Long press delay (now is %QPHYX_LONG_TIME%s)
+        IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, UserKey%key_pos%
+        USER_KEY_%key_pos% := user_input
+        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
+        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
+        Menu, QphyxSettings, Add, Change first user-defined key (now is %key1%), ChangeUserKey
+        Menu, QphyxSettings, Add, Change second user-defined key (now is %key2%), ChangeUserKey
+        Menu, QphyxSettings, Add, Toggle "dotless i" feature, QphyxDotlessI
+        Menu, QphyxSettings, Add, Disa&ble qPhyx (sh+tilde to toggle), QphyxDisable
+        Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
+        Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+    }
+}
+
+QphyxDotlessI()
+{
+    QPHYX_DOTLESS_I := !QPHYX_DOTLESS_I
+    IniWrite % QPHYX_DOTLESS_I, %QPHYX_PATH%config.ini, Configuration, DotlessISwap
+    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+}
+
+QphyxDisable()
+{
+    QPHYX_DISABLE := !QPHYX_DISABLE
+    IniWrite % QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
+    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+}
+
+QphyxLongPress()
+{
+    InputBox, user_input, Set new long press delay
+        , New value in seconds (e.g. 0.15), , 444, 130
+    If !ErrorLevel
+    {
+        If user_input is number
+        {
+            Menu, QphyxSettings, Delete, &Long press delay (now is %QPHYX_LONG_TIME%s)
+            IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
+            QPHYX_LONG_TIME := user_input
+            Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
+            Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+        }
+        Else
+        {
+            MsgBox, 53, Incorrect value, The input must be a number!
+            IfMsgBox Retry
+            {
+                QphyxLongPress()
+            }
+        }
+    }
+}
+
+
+;===============================================================================================
+;======================================Third-API functions======================================
+;===============================================================================================
 
 Weather(q_city)
 {
@@ -1268,7 +1594,7 @@ LayoutSwitch(dict)
 
 
 ;===============================================================================================
-;===========================================Labels==============================================
+;===========================================Other===============================================
 ;===============================================================================================
 
 Pass:
@@ -1287,196 +1613,6 @@ Idle:
         }
     }
     Return
-
-Reminder:
-    InputBox, user_input, Reminder, Remind me in ... minutes, , 200, 130
-    If !ErrorLevel
-    {
-        If user_input is number
-        {
-            delay := user_input * 60000
-            SetTimer, Alarma, %delay%
-        }
-        Else
-        {
-            MsgBox, 53, Incorrect value, The input must be a number!
-            IfMsgBox Retry
-            {
-                GoTo, Reminder
-            }
-        }
-    }
-    Return
-
-Alarma:
-    MsgBox, 48, ALARMA, ALARMA
-    SetTimer, Alarma, Off
-    Return
-
-QphyxDotlessI:
-    QPHYX_DOTLESS_I := !QPHYX_DOTLESS_I
-    IniWrite % QPHYX_DOTLESS_I, %QPHYX_PATH%config.ini, Configuration, DotlessISwap
-    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
-    Return
-
-QphyxDisable:
-    QPHYX_DISABLE := !QPHYX_DISABLE
-    IniWrite % QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
-    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
-    Return
-
-QphyxLongPress:
-    InputBox, user_input, Set new long press delay
-        , New value in seconds (e.g. 0.15), , 444, 130
-    If !ErrorLevel
-    {
-        If user_input is number
-        {
-            Menu, QphyxSettings, Delete, &Long press delay (now is %QPHYX_LONG_TIME%s)
-            IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
-            QPHYX_LONG_TIME := user_input
-            Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-            Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
-        }
-        Else
-        {
-            MsgBox, 53, Incorrect value, The input must be a number!
-            IfMsgBox Retry
-            {
-                GoTo, QphyxLongPress
-            }
-        }
-    }
-    Return
-
-MusTimer:
-    InputBox, user_input, Set new auto-stop music on AFK delay
-        , New value in minutes (e.g. 10), , 444, 130
-    If !ErrorLevel
-    {
-        If user_input is number
-        {
-            Menu, Func, Delete, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m)
-            Menu, Func, Delete, Qphyx settings
-            IniWrite, %user_input%, %INI%, Configuration, MusPauseDelay
-            MUS_PAUSE_DELAY := user_input
-            Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
-            Menu, Func, Add, Qphyx settings, :QphyxSettings
-        }
-        Else
-        {
-            MsgBox, 53, Incorrect value, The input must be a number!
-            IfMsgBox Retry
-            {
-                GoTo, MusTimer
-            }
-        }
-    }
-    Return
-
-AddSavedValue:
-    message =
-    (
-        Enter name for new value (with "&&" for hotkey)
-Take into account that "test", "&&test" and "tes&&t" are three different values!
-If you enter existing value name it will be overwritten without warning!
-    )
-    InputBox, user_input, New value name, %message%, , 470, 160
-    If !ErrorLevel
-    {
-        InputBox, user_input_2, Value for %user_input%
-            , Enter value for %user_input%`nAll values stored solely in "config.ini", , 444, 160
-        If !ErrorLevel
-        {
-            IniWrite, %user_input_2%, %INI%, SavedValue, %user_input%
-            MsgBox, Success!
-            Run, menu%EXT%
-        }
-    }
-    Return
-
-DeleteSavedValue:
-    InputBox, user_input, Enter deleting value name
-        , Enter deleting value name (with "&&" if there is), , 470, 140
-    If !ErrorLevel
-    {
-        If !user_input
-        {
-            MsgBox, 53, , Input must be not empty!
-            IfMsgBox Retry
-            {
-                GoTo, DeleteSavedValue
-            }
-        }
-        Else
-        {
-            IniDelete, %INI%, SavedValue, %user_input%
-            If !ErrorLevel
-            {
-                MsgBox, Success (or not ¯\_(ツ)_/¯)
-                Run, menu%EXT%
-            }
-            Else
-            {
-                MsgBox, 53, Incorrect value
-                IfMsgBox Retry
-                {
-                    GoTo, DeleteSavedValue
-                }
-            }
-        }
-    }
-    Return
-
-;emoji
-    Shrug:
-        SendInput ¯\_(ツ)_/¯
-        Return
-    Lenny:
-        SendInput ( ͡° ͜ʖ ͡°)
-        Return
-    Dude:
-        SendInput ಠoಠ
-        Return
-    Why:
-        SendInput ლ(・﹏・ლ)
-        Return
-    Fight:
-        SendInput (ง'̀-'́)ง
-        Return
-    TakeMyEnergy:
-        SendInput ༼ つ ◕_◕ ༽つ
-        Return
-    Rage:
-        SendInput (╯°□°)╯︵ ┻━┻
-        Return
-    PuttingTableBack:
-        SendInput ┬─┬ノ( º _ ºノ)
-        Return
-    Ashamed:
-        SendInput (；一_一)
-        Return
-    Meh:
-        SendInput （＾～＾）
-        Return
-    Koala:
-        SendInput ʕ •ᴥ•ʔ
-        Return
-    Crazy:
-        SendInput (◐‿◑)
-        Return
-    Hug:
-        SendInput (っ⌒‿⌒)っ
-        Return
-    Yikes:
-        SendInput (☉__☉”)
-        Return
-    wOw:
-        SendInput (ﾉﾟ0ﾟ)ﾉ~
-        Return
-    Upset:
-        SendInput ༼ ༎ຶ ෴ ༎ຶ༽
-        Return
 
 
 ;(\|), on a 102-key keyboards
