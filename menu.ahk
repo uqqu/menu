@@ -34,7 +34,10 @@ Else
     IniWrite, 10,               %INI%, Configuration, MusPauseDelay
     IniWrite, nircmd.exe,       %INI%, Configuration, NircmdFile
     IniWrite, c:\layout\,       %INI%, Configuration, QphyxPath
-    IniWrite, 1,                %INI%, CurrencyPairs, USD:EUR
+    IniWrite, US&D–EUR,         %INI%, CurrencyPairs, usd:eur
+    IniWrite, &EUR–USD,         %INI%, CurrencyPairs, eur:usd|
+    IniWrite, ... &to USD,      %INI%, ToCurrency, usd
+    IniWrite, example@gmail.com,%INI%, SavedValue, Example e-mail value
     Run, menu%EXT%
 }
 
