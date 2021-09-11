@@ -12,9 +12,14 @@ IfExist, %icon%
     Menu, Tray, Icon, %icon%, , 1
 }
 
-Global EXT := A_IsCompiled ? ".exe" : ".ahk"
+Global EXT := A_IsCompiled ? 1 : 0
+Process, Close, % "menu" . [".exe", ".ahk"][EXT + 1]
+
+
+Global DISABLE := 0
 
 ;main config.ini variables
+Global MAIN_KEY
 Global MUS_CHECK_DELAY
 Global MUS_PAUSE_DELAY
 Global NIRCMD_FILE
@@ -23,6 +28,7 @@ Global QPHYX_PATH
 Global INI := "config.ini"
 IfExist, %INI%
 {
+    IniRead, MAIN_KEY,          %INI%, Configuration, MainKey
     IniRead, MUS_CHECK_DELAY,   %INI%, Configuration, MusCheckDelay
     IniRead, MUS_PAUSE_DELAY,   %INI%, Configuration, MusPauseDelay
     IniRead, NIRCMD_FILE,       %INI%, Configuration, NircmdFile
@@ -30,6 +36,7 @@ IfExist, %INI%
 }
 Else
 {
+    IniWrite, SC02B,            %INI%, Configuration, MainKey
     IniWrite, 666,              %INI%, Configuration, MusCheckDelay
     IniWrite, 10,               %INI%, Configuration, MusPauseDelay
     IniWrite, nircmd.exe,       %INI%, Configuration, NircmdFile
@@ -38,7 +45,7 @@ Else
     IniWrite, &EUR–USD,         %INI%, CurrencyPairs, eur:usd|
     IniWrite, ... &to USD,      %INI%, ToCurrency, usd
     IniWrite, example@gmail.com,%INI%, SavedValue, Example e-mail value
-    Run, menu%EXT%
+    MenuRestart()
 }
 
 IfExist, %QPHYX_PATH%config.ini
@@ -88,7 +95,15 @@ Global CYR_MODE_LIST := ["Ukrainian, Belarusian, Caucasian, ..."
     , "Abkhazian"]
 
 ;music control label (auto pause music on long afk; auto mute volume when advertisement)
-SetTimer, Idle, %MUS_CHECK_DELAY%
+SetTimer, IdlePause, %MUS_CHECK_DELAY%
+If FileExist(NIRCMD_FILE)
+{
+    SetTimer, SpotifyMute, %MUS_CHECK_DELAY%
+}
+
+Hotkey, ^+%MAIN_KEY%, DisableToggle
+Hotkey,  %MAIN_KEY%, PasteMenu
+Hotkey, +%MAIN_KEY%, MessageMenu
 
 
 ;===============================================================================================
@@ -699,6 +714,11 @@ If QPHYX_LONG_TIME
 ;===========================================Tool functions======================================
 ;===============================================================================================
 
+MenuRestart()
+{
+    Run % "menu" . [".ahk", ".exe"][EXT + 1]
+}
+
 SendValue(value)
 {
     SendInput %value%
@@ -834,7 +854,7 @@ If you enter existing value name it will be overwritten without warning!
         {
             IniWrite, %user_input_2%, %INI%, SavedValue, %user_input%
             MsgBox, Success!
-            Run, menu%EXT%
+            MenuRestart()
         }
     }
 }
@@ -859,7 +879,7 @@ DeleteSavedValue()
             If !ErrorLevel
             {
                 MsgBox, Success (or not ¯\_(ツ)_/¯)
-                Run, menu%EXT%
+                MenuRestart()
             }
             Else
             {
@@ -915,7 +935,7 @@ If you enter existing pair (in the same sequence) it will be overwritten without
                     StringLower user_input, user_input
                     IniWrite, %user_input_2%, %INI%, CurrencyPairs, %user_input%
                     MsgBox, Success!
-                    Run, menu%EXT%
+                    MenuRestart()
                 }
             }
         }
@@ -947,7 +967,7 @@ If you set additional separator with "|" it also must be entered here
             If !ErrorLevel
             {
                 MsgBox, Success (or not ¯\_(ツ)_/¯)
-                Run, menu%EXT%
+                MenuRestart()
             }
             Else
             {
@@ -1001,7 +1021,7 @@ If you enter existing value it will be overwritten without warning!
                     StringLower user_input, user_input
                     IniWrite, %user_input_2%, %INI%, ToCurrency, %user_input%
                     MsgBox, Success!
-                    Run, menu%EXT%
+                    MenuRestart()
                 }
             }
         }
@@ -1028,7 +1048,7 @@ DeleteCurrency()
             If !ErrorLevel
             {
                 MsgBox, Success (or not ¯\_(ツ)_/¯)
-                Run, menu%EXT%
+                MenuRestart()
             }
             Else
             {
@@ -1052,7 +1072,7 @@ LatModeChange(_, item_pos)
     IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, LatinMode
     Menu, LatModes, Uncheck, % LAT_MODE_LIST[LATIN_MODE+1]
     Menu, LatModes, Check, % LAT_MODE_LIST[item_pos]
-    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+    QphyxRestart()
 }
 
 CyrModeChange(_, item_pos)
@@ -1060,7 +1080,7 @@ CyrModeChange(_, item_pos)
     IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, CyrillicMode
     Menu, CyrModes, Uncheck, % CYR_MODE_LIST[CYRILLIC_MODE+1]
     Menu, CyrModes, Check, % CYR_MODE_LIST[item_pos]
-    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+    QphyxRestart()
 }
 
 ChangeUserKey(item_name)
@@ -1092,7 +1112,7 @@ If empty – works as decrement/increment number (be careful with use it on non-
         Menu, QphyxSettings, Add, Toggle "dotless i" feature, QphyxDotlessI
         Menu, QphyxSettings, Add, Disa&ble qPhyx (sh+tilde to toggle), QphyxDisable
         Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-        Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+        QphyxRestart()
     }
 }
 
@@ -1100,14 +1120,14 @@ QphyxDotlessI()
 {
     QPHYX_DOTLESS_I := !QPHYX_DOTLESS_I
     IniWrite % QPHYX_DOTLESS_I, %QPHYX_PATH%config.ini, Configuration, DotlessISwap
-    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+    QphyxRestart()
 }
 
 QphyxDisable()
 {
     QPHYX_DISABLE := !QPHYX_DISABLE
     IniWrite % QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
-    Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+    QphyxRestart()
 }
 
 QphyxLongPress()
@@ -1122,7 +1142,7 @@ QphyxLongPress()
             IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
             QPHYX_LONG_TIME := user_input
             Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-            Run, %QPHYX_PATH%qphyx%EXT%, %QPHYX_PATH%
+            QphyxRestart()
         }
         Else
         {
@@ -1132,6 +1152,18 @@ QphyxLongPress()
                 QphyxLongPress()
             }
         }
+    }
+}
+
+QphyxRestart()
+{
+    IfExist % QPHYX_PATH . "qphyx" . [".ahk", ".exe"][EXT + 1]
+    {
+        Run % QPHYX_PATH . "qphyx" . [".ahk", ".exe"][EXT + 1], %QPHYX_PATH%
+    }
+    Else
+    {
+        Run % QPHYX_PATH . "qphyx" . [".ahk", ".exe"][!EXT + 1], %QPHYX_PATH%
     }
 }
 
@@ -1603,13 +1635,15 @@ LayoutSwitch(dict)
 Pass:
     Return
 
-Idle:
-    delay := MUS_PAUSE_DELAY * 60000
-    IfGreater, A_TimeIdle, %delay%, SendInput {SC124}
+IdlePause:
+    IfGreater, A_TimeIdle, % MUS_PAUSE_DELAY * 60000, SendInput {SC124}
+    Return
+
+SpotifyMute:
     If SPOTIFY
     {
         WinGetTitle, title, ahk_id %SPOTIFY%
-        If (((title == "Advertisement") ^ !MUTE) && FileExist NIRCMD_FILE)
+        If ((title == "Advertisement") ^ !MUTE)
         {
             MUTE := !MUTE
             Run %NIRCMD_FILE% setappvolume Spotify.exe %MUTE%
@@ -1620,33 +1654,39 @@ Idle:
 
 ;(\|), on a 102-key keyboards
 
- SC02B::
-    WinGetTitle, title, A
-    If (title != "Heroes of Might and Magic III: Horn of the Abyss")
+DisableToggle:
+    DISABLE := !DISABLE
+    Return
+
+PasteMenu:
+    If DISABLE
+    {
+        SendInput {%MAIN_KEY%}
+    }
+    Else
     {
         Menu, Paste, Show, %A_CaretX%, %A_CaretY%
     }
-    Else
-    {
-        SendInput {SC02B}
-    }
     Return
-+SC02B::
-    WinGetTitle, title, A
-    If (title != "Heroes of Might and Magic III: Horn of the Abyss")
+
+MessageMenu:
+    If DISABLE
     {
-        If QPHYX_DISABLE
-        {
-            Menu, QphyxSettings, Check, Disa&ble qPhyx (sh+tilde to toggle)
-        }
-        Else If (QPHYX_DISABLE == 0)
-        {
-            Menu, QphyxSettings, Uncheck, Disa&ble qPhyx (sh+tilde to toggle)
-        }
-        Menu, Func,  Show, %A_CaretX%, %A_CaretY%
+        SendInput +{%MAIN_KEY%}
     }
     Else
     {
-        SendInput +{SC02B}
+        If QPHYX_LONG_TIME
+        {
+            IniRead, QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
+            If QPHYX_DISABLE {
+                Menu, QphyxSettings, Check, Disa&ble qPhyx (sh+tilde to toggle)
+            }
+            Else
+            {
+                Menu, QphyxSettings, Uncheck, Disa&ble qPhyx (sh+tilde to toggle)
+            }
+        }
+        Menu, Func, Show, %A_CaretX%, %A_CaretY%
     }
     Return
