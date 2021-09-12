@@ -114,20 +114,6 @@ Menu, Paste, Add, Paste menu, Pass
 Menu, Paste, ToggleEnable, Paste menu
 Menu, Paste, Icon, Paste menu, %A_AhkPath%, -207
 
-;"predefined values paste" submenu
-IniRead, section, %INI%, SavedValue
-For ind, pair in StrSplit(section, "`n")
-{
-    values := StrSplit(pair, "=")
-    saved_value%ind% := Func("SendValue").Bind(values[2])
-    Menu, Values, Add, % values[1], % saved_value%ind%
-}
-Menu, Values, Add
-Menu, Values, Add, Add new value, AddSavedValue
-Menu, Values, Add, Delete existing value, DeleteSavedValue
-
-Menu, Paste, Add, Saved &values, :Values
-
 ;uniform edit currency sub-sub-sub-menu
             Menu, ManageCurrency, Add, Add currency pair, AddCurrencyPair
             Menu, ManageCurrency, Add, Delete currency pair, DeleteCurrencyPair
@@ -308,6 +294,19 @@ Menu, Paste, Add, &Selected text transform, :Sel
     Menu, Inp, Add, Currenc&y converter, :ConvI
 Menu, Paste, Add, &Input text to transform, :Inp
 Menu, Paste, Add
+
+;"predefined values paste" submenu
+IniRead, section, %INI%, SavedValue
+For ind, pair in StrSplit(section, "`n")
+{
+    values := StrSplit(pair, "=")
+    saved_value%ind% := Func("SendValue").Bind(values[2])
+    Menu, Values, Add, % values[1], % saved_value%ind%
+}
+    Menu, Values, Add
+    Menu, Values, Add, Add new value, AddSavedValue
+    Menu, Values, Add, Delete existing value, DeleteSavedValue
+Menu, Paste, Add, Saved &values, :Values
 
 ;emoji submenu
     Menu, Emoji, Add, ¯\_(ツ)_/¯ &Shrug, Emoji
@@ -640,17 +639,19 @@ If QPHYX_LONG_TIME
 @Clip(func, params*)
 {
     result := %func%(params)
-    SendInput %result%
+    SendInput {Raw}%result%
 }
+
 @Sel(func, params*)
 {
     saved_value := Clipboard
     SendInput ^{SC02E}
-    Sleep, 1
+    Sleep, 33
     result := %func%(params)
-    SendInput %result%
+    SendInput {Raw}%result%
     Clipboard := saved_value
 }
+
 @Inp(func, params*)
 {
     InputBox, user_input, %func%, Input for %func% function, , 300, 150
@@ -659,10 +660,11 @@ If QPHYX_LONG_TIME
         saved_value := Clipboard
         Clipboard := user_input
         result := %func%(params)
-        SendInput %result%
+        SendInput {Raw}%result%
         Clipboard := saved_value
     }
 }
+
 @ClipMsg(func, params*)
 {
     result := %func%(params)
@@ -672,6 +674,7 @@ If QPHYX_LONG_TIME
         Clipboard := result
     }
 }
+
 @SelMsg(func, params*)
 {
     saved_value := Clipboard
@@ -689,6 +692,7 @@ If QPHYX_LONG_TIME
         Clipboard := saved_value
     }
 }
+
 @InpMsg(func, params*)
 {
     InputBox, user_input, %func%, Input for %func% function, , 300, 150
@@ -723,6 +727,7 @@ SendValue(value)
 {
     SendInput %value%
 }
+
 ;detect current spotify process
 SpotifyDetectProcessId()
 {
@@ -1480,16 +1485,16 @@ Normalize()
 {
     ; Go or stay? Now I gotta choose, and I’ll accept your invitation to the blues
     StringLower, result, Clipboard
-    Return Trim(RegExReplace(RegExReplace(RegExReplace(result, "[     ]+", " ")
-        , "[     ]*([.,!?;])[     ]*", "$u1 ")
-        , "(((^\s*|([.!?;]+\s+))[a-zа-яё])| i | i'| i’)", "$u1"), OmitChars := " `t`n`r")
+    Return Trim(RegExReplace(RegExReplace(Trim(RegExReplace(result, "[ \t]+", " "))
+        , " ?([.,!?;]+) ?", "$1 ")
+        , "(((^|^[–—] |[.!?] )[a-zа-яё])| i['’ ])", "$u1"))
 }
 
 Sentence()
 {
     ; Go or stay  ?now I gotta choose, and I’ll accept your invitation to the blues
     StringLower, result, Clipboard
-    Return RegExReplace(result, "(((^\s*|([.!?;]+\s+))[a-zа-яё])| i | i'| i’)", "$u1")
+    Return RegExReplace(result, "(((^\s*—?–?\s*|([.!?]\s+))[a-zа-яё])|[ \t]i['’ \t])", "$u1")
 }
 
 Capitalized()
@@ -1520,34 +1525,18 @@ Inverted()
     Loop % StrLen(Clipboard)
     {
         cur_char := Asc(SubStr(Clipboard, A_Index, 1))
-        If cur_char Between 65 And 90
-        {
+        If ((cur_char >= 65) && (cur_char <= 90)) 
+            || ((cur_char >= 1040) && (cur_char <= 1071))
             result := result Chr(cur_char + 32)
-        }
-        Else If cur_char Between 1040 And 1071
-        {
-            result := result Chr(cur_char + 32)
-        }
-        Else If cur_char Between 97 And 122
-        {
+        Else If ((cur_char >= 97) && (cur_char <= 122)) 
+            || ((cur_char >= 1072) && (cur_char <= 1103))
             result := result Chr(cur_char - 32)
-        }
-        Else If cur_char Between 1072 And 1103
-        {
-            result := result Chr(cur_char - 32)
-        }
         Else If (cur_char == 1025)
-        {
             result := result Chr(1105)
-        }
         Else If (cur_char == 1105)
-        {
             result := result Chr(1025)
-        }
         Else
-        {
             result := result Chr(Cur_char)
-        }
     }
     Return result
 }
