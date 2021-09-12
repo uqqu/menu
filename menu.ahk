@@ -12,8 +12,7 @@ IfExist, %icon%
     Menu, Tray, Icon, %icon%, , 1
 }
 
-Global EXT := A_IsCompiled ? 1 : 0
-Process, Close, % "menu" . [".exe", ".ahk"][EXT + 1]
+Global EXT := A_IsCompiled ? ".exe" : ".ahk"
 
 
 Global DISABLE := 0
@@ -45,7 +44,7 @@ Else
     IniWrite, &EUR–USD,         %INI%, CurrencyPairs, eur:usd|
     IniWrite, ... &to USD,      %INI%, ToCurrency, usd
     IniWrite, example@gmail.com,%INI%, SavedValue, Example e-mail value
-    MenuRestart()
+    Run, menu%EXT%
 }
 
 IfExist, %QPHYX_PATH%config.ini
@@ -718,11 +717,6 @@ If QPHYX_LONG_TIME
 ;===========================================Tool functions======================================
 ;===============================================================================================
 
-MenuRestart()
-{
-    Run % "menu" . [".ahk", ".exe"][EXT + 1]
-}
-
 SendValue(value)
 {
     SendInput %value%
@@ -859,7 +853,7 @@ If you enter existing value name it will be overwritten without warning!
         {
             IniWrite, %user_input_2%, %INI%, SavedValue, %user_input%
             MsgBox, Success!
-            MenuRestart()
+            Run, menu%EXT%
         }
     }
 }
@@ -884,7 +878,7 @@ DeleteSavedValue()
             If !ErrorLevel
             {
                 MsgBox, Success (or not ¯\_(ツ)_/¯)
-                MenuRestart()
+                Run, menu%EXT%
             }
             Else
             {
@@ -940,7 +934,7 @@ If you enter existing pair (in the same sequence) it will be overwritten without
                     StringLower user_input, user_input
                     IniWrite, %user_input_2%, %INI%, CurrencyPairs, %user_input%
                     MsgBox, Success!
-                    MenuRestart()
+                    Run, menu%EXT%
                 }
             }
         }
@@ -972,7 +966,7 @@ If you set additional separator with "|" it also must be entered here
             If !ErrorLevel
             {
                 MsgBox, Success (or not ¯\_(ツ)_/¯)
-                MenuRestart()
+                Run, menu%EXT%
             }
             Else
             {
@@ -1026,7 +1020,7 @@ If you enter existing value it will be overwritten without warning!
                     StringLower user_input, user_input
                     IniWrite, %user_input_2%, %INI%, ToCurrency, %user_input%
                     MsgBox, Success!
-                    MenuRestart()
+                    Run, menu%EXT%
                 }
             }
         }
@@ -1053,7 +1047,7 @@ DeleteCurrency()
             If !ErrorLevel
             {
                 MsgBox, Success (or not ¯\_(ツ)_/¯)
-                MenuRestart()
+                Run, menu%EXT%
             }
             Else
             {
@@ -1077,7 +1071,7 @@ LatModeChange(_, item_pos)
     IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, LatinMode
     Menu, LatModes, Uncheck, % LAT_MODE_LIST[LATIN_MODE+1]
     Menu, LatModes, Check, % LAT_MODE_LIST[item_pos]
-    QphyxRestart()
+    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
 }
 
 CyrModeChange(_, item_pos)
@@ -1085,7 +1079,7 @@ CyrModeChange(_, item_pos)
     IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, CyrillicMode
     Menu, CyrModes, Uncheck, % CYR_MODE_LIST[CYRILLIC_MODE+1]
     Menu, CyrModes, Check, % CYR_MODE_LIST[item_pos]
-    QphyxRestart()
+    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
 }
 
 ChangeUserKey(item_name)
@@ -1117,7 +1111,7 @@ If empty – works as decrement/increment number (be careful with use it on non-
         Menu, QphyxSettings, Add, Toggle "dotless i" feature, QphyxDotlessI
         Menu, QphyxSettings, Add, Disa&ble qPhyx (sh+tilde to toggle), QphyxDisable
         Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-        QphyxRestart()
+        Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
     }
 }
 
@@ -1125,14 +1119,14 @@ QphyxDotlessI()
 {
     QPHYX_DOTLESS_I := !QPHYX_DOTLESS_I
     IniWrite % QPHYX_DOTLESS_I, %QPHYX_PATH%config.ini, Configuration, DotlessISwap
-    QphyxRestart()
+    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
 }
 
 QphyxDisable()
 {
     QPHYX_DISABLE := !QPHYX_DISABLE
     IniWrite % QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
-    QphyxRestart()
+    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
 }
 
 QphyxLongPress()
@@ -1147,7 +1141,7 @@ QphyxLongPress()
             IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
             QPHYX_LONG_TIME := user_input
             Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-            QphyxRestart()
+            Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
         }
         Else
         {
@@ -1157,18 +1151,6 @@ QphyxLongPress()
                 QphyxLongPress()
             }
         }
-    }
-}
-
-QphyxRestart()
-{
-    IfExist % QPHYX_PATH . "qphyx" . [".ahk", ".exe"][EXT + 1]
-    {
-        Run % QPHYX_PATH . "qphyx" . [".ahk", ".exe"][EXT + 1], %QPHYX_PATH%
-    }
-    Else
-    {
-        Run % QPHYX_PATH . "qphyx" . [".ahk", ".exe"][!EXT + 1], %QPHYX_PATH%
     }
 }
 
