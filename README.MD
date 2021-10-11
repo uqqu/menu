@@ -19,20 +19,18 @@ Output can be performed as text to input or to separate text message.
   * Fix text functions
     * Normalize case and spaces
     <br>`Input:  " 	—	teST!?so ,i'M a test  	string	;and i’m too .  	"`
-    `Output: "— Test!? So, I'm a test string; and I’m too."`
+    <br>`Output: "— Test!? So, I'm a test string; and I’m too."`
     * Normalize case (sentence function)
     <br>`Input:  " 	—	teST!?so ,i'M a test  	string	;and i’m too .  	"`
     <br>`Output: " 	—	Test!?so ,i'm a test  	string;and I’m too .  	"`
-    * Capitalized case
-    <br>`Input:  "new test string"`
-    <br>`Output: "New Test String"`
-    * Uppercase
-    * Lowercase
-    * Inverted case
+    * Invert case
+    * To Capitalized Case
+    * to lowercase
+    * TO UPPERCASE
   * Latin <-> Cyrillic script transformations
-    * Transliterations en <-> ru; ru -> en
-    * qwerty <–> йцукен fix
-    * qphyx_lat <–> qphyx_cyr fix
+    * Transliteration en <-> ru; ru -> en
+    * qwerty <–> йцукен
+    * qphyx_lat <–> qphyx_cyr
   * Calculate expression
     <br>`Input:  "(1+2 * 3 ^4)/5**2"`
     <br>`Output: "6.52"`
@@ -73,9 +71,9 @@ Output can be performed as text to input or to separate text message.
 
 ### Qphyx management
 
-  * Change num-row mode (Latin and Cyrillic, separately)
+  * Change language mode (Latin and Cyrillic, separately)
+  * Toggle some options (dotted/dotless i; no-break space; esc as caps; numpad availability)
   * Define user keys
-  * Toggle dotted/dotless i feature
   * Set "long press" delay
   * Disable/enable qPhyx completely
 

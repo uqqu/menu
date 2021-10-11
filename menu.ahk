@@ -49,20 +49,40 @@ Else
 
 IfExist, %QPHYX_PATH%config.ini
 {
-    Global USER_KEY_1
-    Global USER_KEY_2
     Global LATIN_MODE
     Global CYRILLIC_MODE
     Global QPHYX_DOTLESS_I
+    Global QPHYX_UNBR_SPACE
+    Global QPHYX_ESC_AS_CAPS
+    Global QPHYX_NUMPAD
+    Global USER_KEY_1
+    Global USER_KEY_2
     Global QPHYX_DISABLE
     Global QPHYX_LONG_TIME
-    IniRead, USER_KEY_1,        %QPHYX_PATH%config.ini, Configuration, UserKey1
-    IniRead, USER_KEY_2,        %QPHYX_PATH%config.ini, Configuration, UserKey2
     IniRead, LATIN_MODE,        %QPHYX_PATH%config.ini, Configuration, LatinMode
     IniRead, CYRILLIC_MODE,     %QPHYX_PATH%config.ini, Configuration, CyrillicMode
     IniRead, QPHYX_DOTLESS_I,   %QPHYX_PATH%config.ini, Configuration, DotlessISwap
+    IniRead, QPHYX_UNBR_SPACE,  %QPHYX_PATH%config.ini, Configuration, UnbrSpace
+    IniRead, QPHYX_ESC_AS_CAPS, %QPHYX_PATH%config.ini, Configuration, EscAsCaps
+    IniRead, QPHYX_NUMPAD,      %QPHYX_PATH%config.ini, Configuration, NumPad
+    IniRead, USER_KEY_1,        %QPHYX_PATH%config.ini, Configuration, UserKey1
+    IniRead, USER_KEY_2,        %QPHYX_PATH%config.ini, Configuration, UserKey2
     IniRead, QPHYX_DISABLE,     %QPHYX_PATH%config.ini, Configuration, QphyxDisable
     IniRead, QPHYX_LONG_TIME,   %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
+    IniRead, sections,          %QPHYX_PATH%modes.ini
+    Global LAT_MODE_LIST := []
+    Global CYR_MODE_LIST := []
+    For _, section in StrSplit(sections, "`n") {
+        IniRead, name, %QPHYX_PATH%modes.ini, %section%, name
+        If SubStr(section, 1, 5) == "Latin"
+        {
+            LAT_MODE_LIST.Push(name)
+        }
+        Else
+        {
+            CYR_MODE_LIST.Push(name)
+        }
+    }
 }
 
 ;api keys
@@ -78,20 +98,6 @@ RegRead, CITY, HKEY_CURRENT_USER\Environment, CITY
 Global MUTE := 0
 Global SPOTIFY := 0
 SpotifyDetectProcessId() ; fill SPOTIFY value
-
-Global LAT_MODE_LIST := ["Main mode"
-    , "Turkish", "Polish", "Romanian", "Hungarian", "Slovene, Croatian (Gaj's latin), Romany"
-    , "Lithuanian", "Luxembourgish, Uyghur", "Kurdish (Hawar alphabet)", "Twi, Yoruba (Benin), ..."
-    , "Hausa", "Latvian, Maori, Samoan, Niuean", "Igbo", "Irish, Luba-Katanga, Sundanese", "Venda"
-    , "Old English, Icelandic", "Mossi", "Fula", "Maltese", "Northern Sotho, Albanian", "Kazakh"
-    , "Southern-Berber, Kanuri", "Haitian, Javanese, Kikuyu", "Uzbek", "Azerbaijani, (Turkish)"
-    , "Estonian", "Urdu", "Esperanto", "Western Frisian", "Northern Sami"
-    , "Volta–Niger languages (Yoruba, Igbo, ...)"]
-Global CYR_MODE_LIST := ["Ukrainian, Belarusian, Caucasian, ..."
-    , "Serbian, Montenegrin, Interslavic, ..."
-    , "Kazakh, Mongolian, Uzbek, Tajik, ..."
-    , "Bashkir, Chuvash, Tatar, ..."
-    , "Abkhazian"]
 
 ;music control label (auto pause music on long afk; auto mute volume when advertisement)
 SetTimer, IdlePause, %MUS_CHECK_DELAY%
@@ -612,22 +618,38 @@ If QPHYX_LONG_TIME
     }
             Menu, LatModes, Check, % LAT_MODE_LIST[LATIN_MODE+1]
             Menu, CyrModes, Check, % CYR_MODE_LIST[CYRILLIC_MODE+1]
-        Menu, QphyxSettings, Add, Change latin mode, :LatModes
-        Menu, QphyxSettings, Add, Change cyrillic mode, :CyrModes
-        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
-        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
-        Menu, QphyxSettings, Add, Change first user-defined key (now is %key1%), ChangeUserKey
-        Menu, QphyxSettings, Add, Change second user-defined key (now is %key2%), ChangeUserKey
-        Menu, QphyxSettings, Add, Toggle "dotless i" feature, QphyxDotlessI
-        If QPHYX_DOTLESS_I
-        {
-            Menu, QphyxSettings, Check, Toggle "dotless i" feature
-        }
+        Menu, QphyxSettings, Add, Change la&tin mode, :LatModes
+        Menu, QphyxSettings, Add, Change &cyrillic mode, :CyrModes
+            Menu, SubSettings, Add, Toggle "Dotless &i" feature, QphyxDotlessI
+            If QPHYX_DOTLESS_I
+            {
+                Menu, SubSettings, Check, Toggle "Dotless &i" feature
+            }
+            Menu, SubSettings, Add, Toggle "No-&Break Space" on Sh-Space, QphyxUnbrSpace
+            If QPHYX_UNBR_SPACE
+            {
+                Menu, SubSettings, Check, Toggle "No-&Break Space" on Sh-Space
+            }
+            Menu, SubSettings, Add, Toggle "&Esc as Caps Lock" feature, QphyxEscAsCaps
+            If QPHYX_ESC_AS_CAPS
+            {
+                Menu, SubSettings, Check, Toggle "&Esc as Caps Lock" feature
+            }
+            Menu, SubSettings, Add, Toggle &NumPad availability, QphyxNumPad
+            If QPHYX_NUMPAD
+            {
+                Menu, SubSettings, Check, Toggle &NumPad availability
+            }
+            key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
+            key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
+            Menu, SubSettings, Add, Change &first user-defined key (now is %key1%), ChangeUserKey
+            Menu, SubSettings, Add, Change &second user-defined key (now is %key2%), ChangeUserKey
+        Menu, QphyxSettings, Add, &Other settings, :SubSettings
         ;global QPHYX_DISABLE bool
-        Menu, QphyxSettings, Add, Disa&ble qPhyx (sh+tilde to toggle), QphyxDisable
+        Menu, QphyxSettings, Add, &Disable qPhyx (sh+tilde to toggle), QphyxDisable
         ;global QPHYX_LONG_TIME int
         Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-    Menu, Func, Add, Qphyx settings, :QphyxSettings
+    Menu, Func, Add, &Qphyx settings, :QphyxSettings
 }
 
 
@@ -819,11 +841,11 @@ MusTimer()
         If user_input is number
         {
             Menu, Func, Delete, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m)
-            Menu, Func, Delete, Qphyx settings
+            Menu, Func, Delete, &Qphyx settings
             IniWrite, %user_input%, %INI%, Configuration, MusPauseDelay
             MUS_PAUSE_DELAY := user_input
             Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
-            Menu, Func, Add, Qphyx settings, :QphyxSettings
+            Menu, Func, Add, &Qphyx settings, :QphyxSettings
         }
         Else
         {
@@ -1082,6 +1104,30 @@ CyrModeChange(_, item_pos)
     Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
 }
 
+QphyxDotlessI()
+{
+    IniWrite % !QPHYX_DOTLESS_I, %QPHYX_PATH%config.ini, Configuration, DotlessISwap
+    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
+}
+
+QphyxUnbrSpace()
+{
+    IniWrite % !QPHYX_UNBR_SPACE, %QPHYX_PATH%config.ini, Configuration, UnbrSpace
+    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
+}
+
+QphyxEscAsCaps()
+{
+    IniWrite % !QPHYX_ESC_AS_CAPS, %QPHYX_PATH%config.ini, Configuration, EscAsCaps
+    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
+}
+
+QphyxNumPad()
+{
+    IniWrite % !QPHYX_NUMPAD, %QPHYX_PATH%config.ini, Configuration, NumPad
+    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
+}
+
 ChangeUserKey(item_name)
 {
     message =
@@ -1095,37 +1141,14 @@ If empty – works as decrement/increment number (be careful with use it on non-
     If !ErrorLevel
     {
         key_pos := (SubStr(item_name, 8, 1) == "f") ? 1 : 2
-        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
-        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
-        Menu, QphyxSettings, Delete, Change first user-defined key (now is %key1%)
-        Menu, QphyxSettings, Delete, Change second user-defined key (now is %key2%)
-        Menu, QphyxSettings, Delete, Toggle "dotless i" feature
-        Menu, QphyxSettings, Delete, Disa&ble qPhyx (sh+tilde to toggle)
-        Menu, QphyxSettings, Delete, &Long press delay (now is %QPHYX_LONG_TIME%s)
         IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, UserKey%key_pos%
-        USER_KEY_%key_pos% := user_input
-        key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
-        key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
-        Menu, QphyxSettings, Add, Change first user-defined key (now is %key1%), ChangeUserKey
-        Menu, QphyxSettings, Add, Change second user-defined key (now is %key2%), ChangeUserKey
-        Menu, QphyxSettings, Add, Toggle "dotless i" feature, QphyxDotlessI
-        Menu, QphyxSettings, Add, Disa&ble qPhyx (sh+tilde to toggle), QphyxDisable
-        Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
         Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
     }
 }
 
-QphyxDotlessI()
-{
-    QPHYX_DOTLESS_I := !QPHYX_DOTLESS_I
-    IniWrite % QPHYX_DOTLESS_I, %QPHYX_PATH%config.ini, Configuration, DotlessISwap
-    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-}
-
 QphyxDisable()
 {
-    QPHYX_DISABLE := !QPHYX_DISABLE
-    IniWrite % QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
+    IniWrite % !QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
     Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
 }
 
@@ -1651,11 +1674,11 @@ MessageMenu:
         {
             IniRead, QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
             If QPHYX_DISABLE {
-                Menu, QphyxSettings, Check, Disa&ble qPhyx (sh+tilde to toggle)
+                Menu, QphyxSettings, Check, &Disable qPhyx (sh+tilde to toggle)
             }
             Else
             {
-                Menu, QphyxSettings, Uncheck, Disa&ble qPhyx (sh+tilde to toggle)
+                Menu, QphyxSettings, Uncheck, &Disable qPhyx (sh+tilde to toggle)
             }
         }
         Menu, Func, Show, %A_CaretX%, %A_CaretY%
