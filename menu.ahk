@@ -51,6 +51,7 @@ IfExist, %QPHYX_PATH%config.ini
 {
     Global LATIN_MODE
     Global CYRILLIC_MODE
+    Global QPHYX_PAIRED_BRACKETS
     Global QPHYX_DOTLESS_I
     Global QPHYX_UNBR_SPACE
     Global QPHYX_ESC_AS_CAPS
@@ -59,17 +60,18 @@ IfExist, %QPHYX_PATH%config.ini
     Global USER_KEY_2
     Global QPHYX_DISABLE
     Global QPHYX_LONG_TIME
-    IniRead, LATIN_MODE,        %QPHYX_PATH%config.ini, Configuration, LatinMode
-    IniRead, CYRILLIC_MODE,     %QPHYX_PATH%config.ini, Configuration, CyrillicMode
-    IniRead, QPHYX_DOTLESS_I,   %QPHYX_PATH%config.ini, Configuration, DotlessISwap
-    IniRead, QPHYX_UNBR_SPACE,  %QPHYX_PATH%config.ini, Configuration, UnbrSpace
-    IniRead, QPHYX_ESC_AS_CAPS, %QPHYX_PATH%config.ini, Configuration, EscAsCaps
-    IniRead, QPHYX_NUMPAD,      %QPHYX_PATH%config.ini, Configuration, NumPad
-    IniRead, USER_KEY_1,        %QPHYX_PATH%config.ini, Configuration, UserKey1
-    IniRead, USER_KEY_2,        %QPHYX_PATH%config.ini, Configuration, UserKey2
-    IniRead, QPHYX_DISABLE,     %QPHYX_PATH%config.ini, Configuration, QphyxDisable
-    IniRead, QPHYX_LONG_TIME,   %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
-    IniRead, sections,          %QPHYX_PATH%modes.ini
+    IniRead, LATIN_MODE,            %QPHYX_PATH%config.ini, Configuration, LatinMode
+    IniRead, CYRILLIC_MODE,         %QPHYX_PATH%config.ini, Configuration, CyrillicMode
+    IniRead, QPHYX_PAIRED_BRACKETS, %QPHYX_PATH%config.ini, Configuration, PairedBrackets
+    IniRead, QPHYX_DOTLESS_I,       %QPHYX_PATH%config.ini, Configuration, DotlessISwap
+    IniRead, QPHYX_UNBR_SPACE,      %QPHYX_PATH%config.ini, Configuration, UnbrSpace
+    IniRead, QPHYX_ESC_AS_CAPS,     %QPHYX_PATH%config.ini, Configuration, EscAsCaps
+    IniRead, QPHYX_NUMPAD,          %QPHYX_PATH%config.ini, Configuration, NumPad
+    IniRead, USER_KEY_1,            %QPHYX_PATH%config.ini, Configuration, UserKey1
+    IniRead, USER_KEY_2,            %QPHYX_PATH%config.ini, Configuration, UserKey2
+    IniRead, QPHYX_DISABLE,         %QPHYX_PATH%config.ini, Configuration, QphyxDisable
+    IniRead, QPHYX_LONG_TIME,       %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
+    IniRead, sections,              %QPHYX_PATH%modes.ini
     Global LAT_MODE_LIST := []
     Global CYR_MODE_LIST := []
     For _, section in StrSplit(sections, "`n") {
@@ -620,6 +622,11 @@ If QPHYX_LONG_TIME
             Menu, CyrModes, Check, % CYR_MODE_LIST[CYRILLIC_MODE+1]
         Menu, QphyxSettings, Add, Change la&tin mode, :LatModes
         Menu, QphyxSettings, Add, Change &cyrillic mode, :CyrModes
+            Menu, SubSettings, Add, Toggle "&Paired brackets" feature, QphyxPairedBrackets
+            If QPHYX_PAIRED_BRACKETS
+            {
+                Menu, SubSettings, Check, Toggle "&Paired brackets" feature
+            }
             Menu, SubSettings, Add, Toggle "Dotless &i" feature, QphyxDotlessI
             If QPHYX_DOTLESS_I
             {
@@ -1101,6 +1108,12 @@ CyrModeChange(_, item_pos)
     IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, CyrillicMode
     Menu, CyrModes, Uncheck, % CYR_MODE_LIST[CYRILLIC_MODE+1]
     Menu, CyrModes, Check, % CYR_MODE_LIST[item_pos]
+    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
+}
+
+QphyxPairedBrackets()
+{
+    IniWrite % !QPHYX_PAIRED_BRACKETS, %QPHYX_PATH%config.ini, Configuration, PairedBrackets
     Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
 }
 
