@@ -40,9 +40,12 @@ Else
     IniWrite, 10,               %INI%, Configuration, MusPauseDelay
     IniWrite, nircmd.exe,       %INI%, Configuration, NircmdFile
     IniWrite, c:\layout\,       %INI%, Configuration, QphyxPath
+    FileAppend, `n,             %INI%
     IniWrite, US&D–EUR,         %INI%, CurrencyPairs, usd:eur
     IniWrite, &EUR–USD,         %INI%, CurrencyPairs, eur:usd|
+    FileAppend, `n,             %INI%
     IniWrite, ... &to USD,      %INI%, ToCurrency, usd
+    FileAppend, `n,             %INI%
     IniWrite, example@gmail.com,%INI%, SavedValue, Example e-mail value
     Run, menu%EXT%
 }
@@ -598,8 +601,6 @@ Menu, Func, Add, &Reminder, Reminder
 compare_msg := Func("Compare")
 Menu, Func, Add, C&ompare selected with clipboard, % compare_msg
 Menu, Func, Add
-
-Menu, Func, Add
 Menu, Func, Add
 Menu, Func, Add, Settings, Pass
 Menu, Func, ToggleEnable, Settings
@@ -658,6 +659,34 @@ If QPHYX_LONG_TIME
         Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
     Menu, Func, Add, &Qphyx settings, :QphyxSettings
 }
+
+
+;===============================================================================================
+;=============================================Tray menu=========================================
+;===============================================================================================
+
+Menu, Tray, Tip, menu%EXT% – enabled
+Menu, Tray, NoStandard
+Menu, Tray, Add, &Clipboard text transform, :ClipMsg
+Menu, Tray, Add, &Selected text transform, :SelMsg
+Menu, Tray, Add, &Input text to transform, :InpMsg
+Menu, Tray, Add
+Menu, Tray, Add, &Datetime, :DatetimeM
+Menu, Tray, Add, E&xchange rate, :RatesM
+Menu, Tray, Add, Current &weather, % weather_msg
+Menu, Tray, Add, &Reminder, Reminder
+Menu, Tray, Add
+Menu, Tray, Add
+Menu, Tray, Add, Settings, Pass
+Menu, Tray, ToggleEnable, Settings
+Menu, Tray, Icon, Settings, %A_AhkPath%, -206
+Menu, Tray, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
+If QPHYX_LONG_TIME
+{
+    Menu, Tray, Add, &Qphyx settings, :QphyxSettings
+}
+Menu, Tray, Add, Disa&ble menu (ctrl+sh+leader to toggle), DisableToggle
+Menu, Tray, Add, &Exit, Exit
 
 
 ;===============================================================================================
@@ -1642,6 +1671,9 @@ LayoutSwitch(dict)
 Pass:
     Return
 
+Exit:
+    ExitApp
+
 IdlePause:
     IfGreater, A_TimeIdle, % MUS_PAUSE_DELAY * 60000, SendInput {SC124}
     Return
@@ -1663,6 +1695,24 @@ SpotifyMute:
 
 DisableToggle:
     DISABLE := !DISABLE
+    If DISABLE
+    {
+        IfExist, disabled.ico
+        {
+            Menu, Tray, Icon, disabled.ico, , 1
+        }
+        Menu, Tray, Tip, menu%EXT% – disabled
+        Menu, Tray, Rename, Disa&ble menu (ctrl+sh+leader to toggle), Ena&ble menu (ctrl+sh+leader to toggle)
+    }
+    Else
+    {
+        IfExist, menu.ico
+        {
+            Menu, Tray, Icon, menu.ico, , 1
+        }
+        Menu, Tray, Tip, menu%EXT% – enabled
+        Menu, Tray, Rename, Ena&ble menu (ctrl+sh+leader to toggle), Disa&ble menu (ctrl+sh+leader to toggle)
+    }
     Return
 
 PasteMenu:
