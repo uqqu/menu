@@ -5,25 +5,14 @@
 #SingleInstance Force
 #UseHook On
 
-;set icon
-icon := "menu.ico"
-IfExist, %icon%
-{
-    Menu, Tray, Icon, %icon%, , 1
-}
-
-Global EXT := A_IsCompiled ? ".exe" : ".ahk"
-
-
-Global DISABLE := 0
-
 ;main config.ini variables
 Global MAIN_KEY
 Global MUS_CHECK_DELAY
 Global MUS_PAUSE_DELAY
 Global NIRCMD_FILE
-Global QPHYX_PATH
 
+Global DISABLE := 0
+Global EXT := A_IsCompiled ? ".exe" : ".ahk"
 Global INI := "config.ini"
 IfExist, %INI%
 {
@@ -31,7 +20,6 @@ IfExist, %INI%
     IniRead, MUS_CHECK_DELAY,   %INI%, Configuration, MusCheckDelay
     IniRead, MUS_PAUSE_DELAY,   %INI%, Configuration, MusPauseDelay
     IniRead, NIRCMD_FILE,       %INI%, Configuration, NircmdFile
-    IniRead, QPHYX_PATH,        %INI%, Configuration, QphyxPath
 }
 Else
 {
@@ -39,7 +27,6 @@ Else
     IniWrite, 666,              %INI%, Configuration, MusCheckDelay
     IniWrite, 10,               %INI%, Configuration, MusPauseDelay
     IniWrite, nircmd.exe,       %INI%, Configuration, NircmdFile
-    IniWrite, c:\layout\,       %INI%, Configuration, QphyxPath
     FileAppend, `n,             %INI%
     IniWrite, US&D–EUR,         %INI%, CurrencyPairs, usd:eur
     IniWrite, &EUR–USD,         %INI%, CurrencyPairs, eur:usd|
@@ -50,52 +37,11 @@ Else
     Run, menu%EXT%
 }
 
-IfExist, %QPHYX_PATH%config.ini
-{
-    Global LATIN_MODE
-    Global CYRILLIC_MODE
-    Global QPHYX_PAIRED_BRACKETS
-    Global QPHYX_DOTLESS_I
-    Global QPHYX_UNBR_SPACE
-    Global QPHYX_ESC_AS_CAPS
-    Global QPHYX_NUMPAD
-    Global USER_KEY_1
-    Global USER_KEY_2
-    Global QPHYX_DISABLE
-    Global QPHYX_LONG_TIME
-    IniRead, LATIN_MODE,            %QPHYX_PATH%config.ini, Configuration, LatinMode
-    IniRead, CYRILLIC_MODE,         %QPHYX_PATH%config.ini, Configuration, CyrillicMode
-    IniRead, QPHYX_PAIRED_BRACKETS, %QPHYX_PATH%config.ini, Configuration, PairedBrackets
-    IniRead, QPHYX_DOTLESS_I,       %QPHYX_PATH%config.ini, Configuration, DotlessISwap
-    IniRead, QPHYX_UNBR_SPACE,      %QPHYX_PATH%config.ini, Configuration, UnbrSpace
-    IniRead, QPHYX_ESC_AS_CAPS,     %QPHYX_PATH%config.ini, Configuration, EscAsCaps
-    IniRead, QPHYX_NUMPAD,          %QPHYX_PATH%config.ini, Configuration, NumPad
-    IniRead, USER_KEY_1,            %QPHYX_PATH%config.ini, Configuration, UserKey1
-    IniRead, USER_KEY_2,            %QPHYX_PATH%config.ini, Configuration, UserKey2
-    IniRead, QPHYX_DISABLE,         %QPHYX_PATH%config.ini, Configuration, QphyxDisable
-    IniRead, QPHYX_LONG_TIME,       %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
-    IniRead, sections,              %QPHYX_PATH%modes.ini
-    Global LAT_MODE_LIST := []
-    Global CYR_MODE_LIST := []
-    For _, section in StrSplit(sections, "`n") {
-        IniRead, name, %QPHYX_PATH%modes.ini, %section%, name
-        If SubStr(section, 1, 5) == "Latin"
-        {
-            LAT_MODE_LIST.Push(name)
-        }
-        Else
-        {
-            CYR_MODE_LIST.Push(name)
-        }
-    }
-}
-
 ;api keys
 Global CURRENCY_KEY
 Global WEATHER_KEY
 RegRead, CURRENCY_KEY, HKEY_CURRENT_USER\Environment, GETGEOAPI
 RegRead, WEATHER_KEY, HKEY_CURRENT_USER\Environment, OPENWEATHERMAP
-
 Global CITY
 RegRead, CITY, HKEY_CURRENT_USER\Environment, CITY
 
@@ -111,9 +57,16 @@ If FileExist(NIRCMD_FILE)
     SetTimer, SpotifyMute, %MUS_CHECK_DELAY%
 }
 
+;set icon
+icon := "menu.ico"
+IfExist, %icon%
+{
+    Menu, Tray, Icon, %icon%, , 1
+}
+
+Hotkey,   %MAIN_KEY%, PasteMenu
+Hotkey,  +%MAIN_KEY%, MessageMenu
 Hotkey, ^+%MAIN_KEY%, DisableToggle
-Hotkey,  %MAIN_KEY%, PasteMenu
-Hotkey, +%MAIN_KEY%, MessageMenu
 
 
 ;===============================================================================================
@@ -124,7 +77,7 @@ Menu, Paste, Add, Paste menu, Pass
 Menu, Paste, ToggleEnable, Paste menu
 Menu, Paste, Icon, Paste menu, %A_AhkPath%, -207
 
-;uniform edit currency sub-sub-sub-menu
+;edit currency sub-sub-sub-menu
             Menu, ManageCurrency, Add, Add currency pair, AddCurrencyPair
             Menu, ManageCurrency, Add, Delete currency pair, DeleteCurrencyPair
             Menu, ManageCurrency, Add, Add currency for auto-detect, AddCurrency
@@ -370,6 +323,7 @@ Menu, Paste, Add, &Datetime, :DatetimeP
     Menu, RatesP, Add, &Manage currencies, :ManageCurrency
 Menu, Paste, Add, E&xchange rate, :RatesP
 
+;weather
 weather_pst := Func("@Clip").Bind(Func("Weather").Bind(CITY))
 Menu, Paste, Add, Current &weather, % weather_pst
 
@@ -590,83 +544,33 @@ Menu, Func, Add, &Datetime, :DatetimeM
     Menu, RatesM, Add, &Manage currencies, :ManageCurrency
 Menu, Func, Add, E&xchange rate, :RatesM
 
-;weather
+;other
+;;weather
 weather_msg := Func("@ClipMsg").Bind(Func("Weather").Bind(CITY))
 Menu, Func, Add, Current &weather, % weather_msg
 
-;reminder
+;;reminder
 Menu, Func, Add, &Reminder, Reminder
 
-;compare
+;;compare
 compare_msg := Func("Compare")
 Menu, Func, Add, C&ompare selected with clipboard, % compare_msg
-Menu, Func, Add
-Menu, Func, Add
-Menu, Func, Add, Settings, Pass
-Menu, Func, ToggleEnable, Settings
-Menu, Func, Icon, Settings, %A_AhkPath%, -206
 
-;global MUS_PAUSE_DELAY int
+;;global MUS_PAUSE_DELAY int
 Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
-
-If QPHYX_LONG_TIME
-{
-    For _, wording in LAT_MODE_LIST
-    {
-            Menu, LatModes, Add, %wording%, LatModeChange
-    }
-    For _, wording in CYR_MODE_LIST
-    {
-            Menu, CyrModes, Add, %wording%, CyrModeChange
-    }
-            Menu, LatModes, Check, % LAT_MODE_LIST[LATIN_MODE+1]
-            Menu, CyrModes, Check, % CYR_MODE_LIST[CYRILLIC_MODE+1]
-        Menu, QphyxSettings, Add, Change la&tin mode, :LatModes
-        Menu, QphyxSettings, Add, Change &cyrillic mode, :CyrModes
-            Menu, SubSettings, Add, Toggle "&Paired brackets" feature, QphyxPairedBrackets
-            If QPHYX_PAIRED_BRACKETS
-            {
-                Menu, SubSettings, Check, Toggle "&Paired brackets" feature
-            }
-            Menu, SubSettings, Add, Toggle "Dotless &i" feature, QphyxDotlessI
-            If QPHYX_DOTLESS_I
-            {
-                Menu, SubSettings, Check, Toggle "Dotless &i" feature
-            }
-            Menu, SubSettings, Add, Toggle "No-&Break Space" on Sh-Space, QphyxUnbrSpace
-            If QPHYX_UNBR_SPACE
-            {
-                Menu, SubSettings, Check, Toggle "No-&Break Space" on Sh-Space
-            }
-            Menu, SubSettings, Add, Toggle "&Esc as Caps Lock" feature, QphyxEscAsCaps
-            If QPHYX_ESC_AS_CAPS
-            {
-                Menu, SubSettings, Check, Toggle "&Esc as Caps Lock" feature
-            }
-            Menu, SubSettings, Add, Toggle &NumPad availability, QphyxNumPad
-            If QPHYX_NUMPAD
-            {
-                Menu, SubSettings, Check, Toggle &NumPad availability
-            }
-            key1 := (USER_KEY_1 != "") ? USER_KEY_1 : "empty"
-            key2 := (USER_KEY_2 != "") ? USER_KEY_2 : "empty"
-            Menu, SubSettings, Add, Change &first user-defined key (now is %key1%), ChangeUserKey
-            Menu, SubSettings, Add, Change &second user-defined key (now is %key2%), ChangeUserKey
-        Menu, QphyxSettings, Add, &Other settings, :SubSettings
-        ;global QPHYX_DISABLE bool
-        Menu, QphyxSettings, Add, &Disable qPhyx (sh+tilde to toggle), QphyxDisable
-        ;global QPHYX_LONG_TIME int
-        Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-    Menu, Func, Add, &Qphyx settings, :QphyxSettings
-}
 
 
 ;===============================================================================================
 ;=============================================Tray menu=========================================
 ;===============================================================================================
 
+Menu, Tray, Add, Tray Menu, TrayMenu
+Menu, Tray, Default, Tray Menu
+Menu, Tray, Click, 1
+Menu, Tray, Disable, Tray Menu
 Menu, Tray, Tip, menu%EXT% – enabled
 Menu, Tray, NoStandard
+
 Menu, Tray, Add, &Clipboard text transform, :ClipMsg
 Menu, Tray, Add, &Selected text transform, :SelMsg
 Menu, Tray, Add, &Input text to transform, :InpMsg
@@ -681,10 +585,6 @@ Menu, Tray, Add, Settings, Pass
 Menu, Tray, ToggleEnable, Settings
 Menu, Tray, Icon, Settings, %A_AhkPath%, -206
 Menu, Tray, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
-If QPHYX_LONG_TIME
-{
-    Menu, Tray, Add, &Qphyx settings, :QphyxSettings
-}
 Menu, Tray, Add, Disa&ble menu (ctrl+sh+leader to toggle), DisableToggle
 Menu, Tray, Add, &Exit, Exit
 
@@ -823,7 +723,6 @@ Execute() ; https://www.autohotkey.com/boards/viewtopic.php?p=221460#p221460
     expr := RegExReplace(expr, "\b(E|LN2|LN10|LOG2E|LOG10E|PI|SQRT1_2|SQRT2)\b", "Math.$1")
     expr := RegExReplace(expr, "\b(abs|acos|asin|atan|atan2|ceil|cos|exp"
             . "|floor|log|max|min|pow|random|round|sin|sqrt|tan)\b\(", "Math.$1(")
-
     (o := ComObjCreate("HTMLfile")).write("<body><script>document"
             . ".body.innerText=eval('" . expr . "');</script>")
     o := StrReplace(StrReplace(StrReplace(InStr(o:=o.body.innerText, "body") ? "" : o
@@ -876,12 +775,13 @@ MusTimer()
     {
         If user_input is number
         {
-            Menu, Func, Delete, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m)
-            Menu, Func, Delete, &Qphyx settings
+            old_value = %MUS_PAUSE_DELAY%
             IniWrite, %user_input%, %INI%, Configuration, MusPauseDelay
             MUS_PAUSE_DELAY := user_input
-            Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
-            Menu, Func, Add, &Qphyx settings, :QphyxSettings
+            Menu, Func, Rename, &Auto-stop music on AFK delay (now is %old_value%m)
+                , &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m)
+            Menu, Tray, Rename, &Auto-stop music on AFK delay (now is %old_value%m)
+                , &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m)
         }
         Else
         {
@@ -1114,106 +1014,6 @@ DeleteCurrency()
                 {
                     DeleteCurrency()
                 }
-            }
-        }
-    }
-}
-
-
-;===============================================================================================
-;=======================================qPhyx INI edit==========================================
-;===============================================================================================
-
-LatModeChange(_, item_pos)
-{
-    IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, LatinMode
-    Menu, LatModes, Uncheck, % LAT_MODE_LIST[LATIN_MODE+1]
-    Menu, LatModes, Check, % LAT_MODE_LIST[item_pos]
-    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-}
-
-CyrModeChange(_, item_pos)
-{
-    IniWrite % item_pos-1, %QPHYX_PATH%config.ini, Configuration, CyrillicMode
-    Menu, CyrModes, Uncheck, % CYR_MODE_LIST[CYRILLIC_MODE+1]
-    Menu, CyrModes, Check, % CYR_MODE_LIST[item_pos]
-    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-}
-
-QphyxPairedBrackets()
-{
-    IniWrite % !QPHYX_PAIRED_BRACKETS, %QPHYX_PATH%config.ini, Configuration, PairedBrackets
-    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-}
-
-QphyxDotlessI()
-{
-    IniWrite % !QPHYX_DOTLESS_I, %QPHYX_PATH%config.ini, Configuration, DotlessISwap
-    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-}
-
-QphyxUnbrSpace()
-{
-    IniWrite % !QPHYX_UNBR_SPACE, %QPHYX_PATH%config.ini, Configuration, UnbrSpace
-    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-}
-
-QphyxEscAsCaps()
-{
-    IniWrite % !QPHYX_ESC_AS_CAPS, %QPHYX_PATH%config.ini, Configuration, EscAsCaps
-    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-}
-
-QphyxNumPad()
-{
-    IniWrite % !QPHYX_NUMPAD, %QPHYX_PATH%config.ini, Configuration, NumPad
-    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-}
-
-ChangeUserKey(item_name)
-{
-    message =
-    (
-        New value (recommended is currency symbol or code). It can be several symbols.
-If empty – works as decrement/increment number (be careful with use it on non-textfields!).
-    )
-    InputBox, user_input, Set new value for user-defined key (two left keys from old backspace)
-        , %message%
-        , , 611, 160
-    If !ErrorLevel
-    {
-        key_pos := (SubStr(item_name, 8, 1) == "f") ? 1 : 2
-        IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, UserKey%key_pos%
-        Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-    }
-}
-
-QphyxDisable()
-{
-    IniWrite % !QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
-    Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-}
-
-QphyxLongPress()
-{
-    InputBox, user_input, Set new long press delay
-        , New value in seconds (e.g. 0.15), , 444, 130
-    If !ErrorLevel
-    {
-        If user_input is number
-        {
-            Menu, QphyxSettings, Delete, &Long press delay (now is %QPHYX_LONG_TIME%s)
-            IniWrite, %user_input%, %QPHYX_PATH%config.ini, Configuration, QphyxLongTime
-            QPHYX_LONG_TIME := user_input
-            Menu, QphyxSettings, Add, &Long press delay (now is %QPHYX_LONG_TIME%s), QphyxLongPress
-            Run % QPHYX_PATH . "qphyx" . EXT, %QPHYX_PATH%
-        }
-        Else
-        {
-            MsgBox, 53, Incorrect value, The input must be a number!
-            IfMsgBox Retry
-            {
-                QphyxLongPress()
             }
         }
     }
@@ -1572,10 +1372,10 @@ Inverted()
     Loop % StrLen(Clipboard)
     {
         cur_char := Asc(SubStr(Clipboard, A_Index, 1))
-        If ((cur_char >= 65) && (cur_char <= 90)) 
+        If ((cur_char >= 65) && (cur_char <= 90))
             || ((cur_char >= 1040) && (cur_char <= 1071))
             result := result Chr(cur_char + 32)
-        Else If ((cur_char >= 97) && (cur_char <= 122)) 
+        Else If ((cur_char >= 97) && (cur_char <= 122))
             || ((cur_char >= 1072) && (cur_char <= 1103))
             result := result Chr(cur_char - 32)
         Else If (cur_char == 1025)
@@ -1702,7 +1502,8 @@ DisableToggle:
             Menu, Tray, Icon, disabled.ico, , 1
         }
         Menu, Tray, Tip, menu%EXT% – disabled
-        Menu, Tray, Rename, Disa&ble menu (ctrl+sh+leader to toggle), Ena&ble menu (ctrl+sh+leader to toggle)
+        Menu, Tray, Rename, Disa&ble menu (ctrl+sh+leader to toggle)
+            , Ena&ble menu (ctrl+sh+leader to toggle)
     }
     Else
     {
@@ -1711,7 +1512,8 @@ DisableToggle:
             Menu, Tray, Icon, menu.ico, , 1
         }
         Menu, Tray, Tip, menu%EXT% – enabled
-        Menu, Tray, Rename, Ena&ble menu (ctrl+sh+leader to toggle), Disa&ble menu (ctrl+sh+leader to toggle)
+        Menu, Tray, Rename, Ena&ble menu (ctrl+sh+leader to toggle)
+            , Disa&ble menu (ctrl+sh+leader to toggle)
     }
     Return
 
@@ -1733,17 +1535,9 @@ MessageMenu:
     }
     Else
     {
-        If QPHYX_LONG_TIME
-        {
-            IniRead, QPHYX_DISABLE, %QPHYX_PATH%config.ini, Configuration, QphyxDisable
-            If QPHYX_DISABLE {
-                Menu, QphyxSettings, Check, &Disable qPhyx (sh+tilde to toggle)
-            }
-            Else
-            {
-                Menu, QphyxSettings, Uncheck, &Disable qPhyx (sh+tilde to toggle)
-            }
-        }
         Menu, Func, Show, %A_CaretX%, %A_CaretY%
     }
     Return
+
+TrayMenu:
+    Menu, Tray, Show
