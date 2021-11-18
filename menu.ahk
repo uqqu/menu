@@ -11,7 +11,7 @@ Global MUS_CHECK_DELAY
 Global MUS_PAUSE_DELAY
 Global NIRCMD_FILE
 
-Global DISABLE := 0
+Global DISABLED := 0
 Global EXT := A_IsCompiled ? ".exe" : ".ahk"
 Global INI := "config.ini"
 IfExist, %INI%
@@ -58,15 +58,121 @@ If FileExist(NIRCMD_FILE)
 }
 
 ;set icon
-icon := "menu.ico"
-IfExist, %icon%
+IfExist, menu.ico
 {
-    Menu, Tray, Icon, %icon%, , 1
+    Menu, Tray, Icon, menu.ico, , 1
 }
 
 Hotkey,   %MAIN_KEY%, PasteMenu
 Hotkey,  +%MAIN_KEY%, MessageMenu
-Hotkey, ^+%MAIN_KEY%, DisableToggle
+Hotkey, ^+%MAIN_KEY%, DisabledToggle
+
+
+;===============================================================================================
+;=========================================Menu billet===========================================
+;===============================================================================================
+
+;edit currency sub-sub-sub-menu
+            Menu, ManageCurrencies, Add, Add currency pair, AddCurrencyPair
+            Menu, ManageCurrencies, Add, Delete currency pair, DeleteCurrencyPair
+            Menu, ManageCurrencies, Add, Add currency for auto-detect, AddCurrency
+            Menu, ManageCurrencies, Add, Delete currency for auto-detect, DeleteCurrency
+
+For _, name in ["Clip", "Sel", "Inp", "ClipMsg", "SelMsg", "InpMsg"]
+{
+    normalize_%name%    := Func("@" . name).Bind("Normalize")
+    capitalize_%name%   := Func("@" . name).Bind("Capitalized")
+    lowercase_%name%    := Func("@" . name).Bind("Lowercase")
+    uppercase_%name%    := Func("@" . name).Bind("Uppercase")
+    inverted_%name%     := Func("@" . name).Bind("Inverted")
+    sentence_%name%     := Func("@" . name).Bind("Sentence")
+    en_ru_q_%name%      := Func("@" . name).Bind(Func("LayoutSwitch").Bind("qphyx_en_ru"))
+    ru_en_q_%name%      := Func("@" . name).Bind(Func("LayoutSwitch").Bind("qphyx_ru_en"))
+    en_ru_l_%name%      := Func("@" . name).Bind(Func("LayoutSwitch").Bind("qwerty_en_ru"))
+    ru_en_l_%name%      := Func("@" . name).Bind(Func("LayoutSwitch").Bind("qwerty_ru_en"))
+    en_ru_t_%name%      := Func("@" . name).Bind(Func("LayoutSwitch").Bind("translit_en_ru"))
+    ru_en_t_%name%      := Func("@" . name).Bind(Func("LayoutSwitch").Bind("translit_ru_en"))
+    calc_expr_%name%    := Func("@" . name).Bind("Execute")
+    format_time_%name%  := Func("@" . name).Bind("DatetimeFormat")
+    Menu, %name%, Add, Nor&malize,  % normalize_%name%
+    Menu, %name%, Add, &Sentence,   % sentence_%name%
+    Menu, %name%, Add, &Capitalized,% capitalize_%name%
+    Menu, %name%, Add, &Lowercase,  % lowercase_%name%
+    Menu, %name%, Add, &Uppercase,  % uppercase_%name%
+    Menu, %name%, Add, &Inverted,   % inverted_%name%
+    Menu, %name%, Add
+    Menu, %name%, Add, En-Ru q&phyx switch,     % en_ru_q_%name%
+    Menu, %name%, Add, Ru-En &qphyx switch,     % ru_en_q_%name%
+    Menu, %name%, Add, &En-Ru qwerty switch,    % en_ru_l_%name%
+    Menu, %name%, Add, &Ru-En qwerty switch,    % ru_en_l_%name%
+    Menu, %name%, Add, E&n-Ru transliteration,  % en_ru_t_%name%
+    Menu, %name%, Add, Ru-En transliterati&on,  % ru_en_t_%name%
+    Menu, %name%, Add
+    Menu, %name%, Add, C&alculate the expression, % calc_expr_%name%
+    Menu, %name%, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_%name%
+    ;currency converter submenu
+        IniRead, section, %INI%, CurrencyPairs
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            currencies := StrSplit(values[1], ":")
+            paste_%name%_cur%ind% := Func("@" . name)
+                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
+            Menu, Conv%name%, Add, % values[2], % paste_%name%_cur%ind%
+            If (SubStr(currencies[2], 4, 1) == "|")
+            {
+                Menu, Conv%name%, Add
+            }
+        }
+        Menu, Conv%name%, Add
+        IniRead, section, %INI%, ToCurrency
+        For ind, pair in StrSplit(section, "`n")
+        {
+            values := StrSplit(pair, "=")
+            unk_to_%values1% := Func("@" . name).Bind(Func("UnknownCurrency").Bind(values[1]))
+            Menu, Conv%name%, Add, % values[2], % unk_to_%values1%
+        }
+        Menu, Conv%name%, Add
+        Menu, Conv%name%, Add, &Manage currencies, :ManageCurrencies
+    Menu, %name%, Add, Currenc&y converter, :Conv%name%
+}
+
+For _, name in ["Clip", "ClipMsg"]
+{
+    ;time submenu
+    time_%name%     := Func("@" . name).Bind(Func("Datetime").Bind("hh:mm:ss tt"))
+    date_%name%     := Func("@" . name).Bind(Func("Datetime").Bind("MMMM dd"))
+    datetime_%name% := Func("@" . name).Bind(Func("Datetime")
+        .Bind("dddd, MMMM dd yyyy hh:mm:ss tt"))
+    new_time_%name% := Func("@" . name).Bind("DecimalTime")
+    new_date_%name% := Func("@" . name).Bind("HexalDate")
+    new_dt_%name%   := Func("@" . name).Bind("NewDatetime")
+    Menu, Datetime%name%, Add, &Time,           % time_%name%
+    Menu, Datetime%name%, Add, &Date,           % date_%name%
+    Menu, Datetime%name%, Add, DateTi&me,       % datetime_%name%
+    Menu, Datetime%name%, Add, De&cimal time,   % new_time_%name%
+    Menu, Datetime%name%, Add, &Hexal date,     % new_date_%name%
+    Menu, Datetime%name%, Add, &New datetime,   % new_dt_%name%
+
+    ;exchange rates submenu
+    IniRead, section, %INI%, CurrencyPairs
+    For ind, pair in StrSplit(section, "`n")
+    {
+        values := StrSplit(pair, "=")
+        currencies := StrSplit(values[1], ":")
+        paste_rates_cur%ind% := Func("@" . name)
+            .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3)))
+        Menu, Rates%name%, Add, % values[2], % paste_rates_cur%ind%
+        If (SubStr(currencies[2], 4, 1) == "|")
+        {
+            Menu, Rates%name%, Add
+        }
+    }
+    Menu, Rates%name%, Add
+    Menu, Rates%name%, Add, &Manage currencies, :ManageCurrencies
+
+    weather_%name% := Func("@" . name).Bind(Func("Weather").Bind(CITY))
+}
 
 
 ;===============================================================================================
@@ -77,184 +183,8 @@ Menu, Paste, Add, Paste menu, Pass
 Menu, Paste, ToggleEnable, Paste menu
 Menu, Paste, Icon, Paste menu, %A_AhkPath%, -207
 
-;edit currency sub-sub-sub-menu
-            Menu, ManageCurrency, Add, Add currency pair, AddCurrencyPair
-            Menu, ManageCurrency, Add, Delete currency pair, DeleteCurrencyPair
-            Menu, ManageCurrency, Add, Add currency for auto-detect, AddCurrency
-            Menu, ManageCurrency, Add, Delete currency for auto-detect, DeleteCurrency
-
-;"clipboard as input; paste as output" submenu
-    normalize_clip   := Func("@Clip").Bind("Normalize")
-    capitaliz_clip   := Func("@Clip").Bind("Capitalized")
-    lowercase_clip   := Func("@Clip").Bind("Lowercase")
-    uppercase_clip   := Func("@Clip").Bind("Uppercase")
-    inverted_clip    := Func("@Clip").Bind("Inverted")
-    sentence_clip    := Func("@Clip").Bind("Sentence")
-    en_ru_q_clip     := Func("@Clip").Bind(Func("LayoutSwitch").Bind("qphyx_en_ru"))
-    ru_en_q_clip     := Func("@Clip").Bind(Func("LayoutSwitch").Bind("qphyx_ru_en"))
-    en_ru_l_clip     := Func("@Clip").Bind(Func("LayoutSwitch").Bind("qwerty_en_ru"))
-    ru_en_l_clip     := Func("@Clip").Bind(Func("LayoutSwitch").Bind("qwerty_ru_en"))
-    en_ru_t_clip     := Func("@Clip").Bind(Func("LayoutSwitch").Bind("translit_en_ru"))
-    ru_en_t_clip     := Func("@Clip").Bind(Func("LayoutSwitch").Bind("translit_ru_en"))
-    calc_expr_clip   := Func("@Clip").Bind("Execute")
-    format_time_clip := Func("@Clip").Bind("DatetimeFormat")
-    Menu, Clip, Add, Nor&malize,   % normalize_clip
-    Menu, Clip, Add, &Sentence,    % sentence_clip
-    Menu, Clip, Add, &Capitalized, % capitaliz_clip
-    Menu, Clip, Add, &Lowercase,   % lowercase_clip
-    Menu, Clip, Add, &Uppercase,   % uppercase_clip
-    Menu, Clip, Add, &Inverted,    % inverted_clip
-    Menu, Clip, Add
-    Menu, Clip, Add, En-Ru q&phyx switch,    % en_ru_q_clip
-    Menu, Clip, Add, Ru-En &qphyx switch,    % ru_en_q_clip
-    Menu, Clip, Add, &En-Ru qwerty switch,   % en_ru_l_clip
-    Menu, Clip, Add, &Ru-En qwerty switch,   % ru_en_l_clip
-    Menu, Clip, Add, E&n-Ru transliteration, % en_ru_t_clip
-    Menu, Clip, Add, Ru-En transliterati&on, % ru_en_t_clip
-    Menu, Clip, Add
-    Menu, Clip, Add, C&alculate the expression, % calc_expr_clip
-    Menu, Clip, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_clip
-    ;currency converter submenu
-        IniRead, section, %INI%, CurrencyPairs
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            currencies := StrSplit(values[1], ":")
-            paste_clip_cur%ind% := Func("@Clip")
-                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
-            Menu, ConvC, Add, % values[2], % paste_clip_cur%ind%
-            If (SubStr(currencies[2], 4, 1) == "|")
-            {
-                Menu, ConvC, Add
-            }
-        }
-        Menu, ConvC, Add
-        IniRead, section, %INI%, ToCurrency
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            unk_to_%values1%_p_c := Func("@Clip").Bind(Func("UnknownCurrency").Bind(values[1]))
-            Menu, ConvC, Add, % values[2], % unk_to_%values1%_p_c
-        }
-        Menu, ConvC, Add
-        Menu, ConvC, Add, &Manage currencies, :ManageCurrency
-    Menu, Clip, Add, Currenc&y converter, :ConvC
 Menu, Paste, Add, &Clipboard text transform, :Clip
-
-;"selected text as input; paste as output" submenu
-    normalize_sel   := Func("@Sel").Bind("Normalize")
-    capitaliz_sel   := Func("@Sel").Bind("Capitalized")
-    lowercase_sel   := Func("@Sel").Bind("Lowercase")
-    uppercase_sel   := Func("@Sel").Bind("Uppercase")
-    inverted_sel    := Func("@Sel").Bind("Inverted")
-    sentence_sel    := Func("@Sel").Bind("Sentence")
-    en_ru_q_sel     := Func("@Sel").Bind(Func("LayoutSwitch").Bind("qphyx_en_ru"))
-    ru_en_q_sel     := Func("@Sel").Bind(Func("LayoutSwitch").Bind("qphyx_ru_en"))
-    en_ru_l_sel     := Func("@Sel").Bind(Func("LayoutSwitch").Bind("qwerty_en_ru"))
-    ru_en_l_sel     := Func("@Sel").Bind(Func("LayoutSwitch").Bind("qwerty_ru_en"))
-    en_ru_t_sel     := Func("@Sel").Bind(Func("LayoutSwitch").Bind("translit_en_ru"))
-    ru_en_t_sel     := Func("@Sel").Bind(Func("LayoutSwitch").Bind("translit_ru_en"))
-    calc_expr_sel   := Func("@Sel").Bind("Execute")
-    format_time_sel := Func("@Sel").Bind("DatetimeFormat")
-    Menu, Sel, Add, Nor&malize,   % normalize_sel
-    Menu, Sel, Add, &Sentence,    % sentence_sel
-    Menu, Sel, Add, &Capitalized, % capitaliz_sel
-    Menu, Sel, Add, &Lowercase,   % lowercase_sel
-    Menu, Sel, Add, &Uppercase,   % uppercase_sel
-    Menu, Sel, Add, &Inverted,    % inverted_sel
-    Menu, Sel, Add
-    Menu, Sel, Add, En-Ru &qphyx switch,    % en_ru_q_sel
-    Menu, Sel, Add, Ru-En q&phyx switch,    % ru_en_q_sel
-    Menu, Sel, Add, &En-Ru qwerty switch,   % en_ru_l_sel
-    Menu, Sel, Add, &Ru-En qwerty switch,   % ru_en_l_sel
-    Menu, Sel, Add, E&n-Ru transliteration, % en_ru_t_sel
-    Menu, Sel, Add, Ru-En transliterati&on, % ru_en_t_sel
-    Menu, Sel, Add
-    Menu, Sel, Add, C&alculate the expression, % calc_expr_sel
-    Menu, Sel, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_sel
-    ;currency converter submenu
-        IniRead, section, %INI%, CurrencyPairs
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            currencies := StrSplit(values[1], ":")
-            paste_sel_cur%ind% := Func("@Sel")
-                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
-            Menu, ConvS, Add, % values[2], % paste_sel_cur%ind%
-            If (SubStr(currencies[2], 4, 1) == "|")
-            {
-                Menu, ConvS, Add
-            }
-        }
-        Menu, ConvS, Add
-        IniRead, section, %INI%, ToCurrency
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            unk_to_%values1%_p_s := Func("@Sel").Bind(Func("UnknownCurrency").Bind(values[1]))
-            Menu, ConvS, Add, % values[2], % unk_to_%values1%_p_s
-        }
-        Menu, ConvS, Add
-        Menu, ConvS, Add, &Manage currencies, :ManageCurrency
-    Menu, Sel, Add, Currenc&y converter, :ConvS
 Menu, Paste, Add, &Selected text transform, :Sel
-
-;"input_box as input; paste as output" submenu
-    normalize_inp   := Func("@Inp").Bind("Normalize")
-    capitaliz_inp   := Func("@Inp").Bind("Capitalized")
-    lowercase_inp   := Func("@Inp").Bind("Lowercase")
-    uppercase_inp   := Func("@Inp").Bind("Uppercase")
-    inverted_inp    := Func("@Inp").Bind("Inverted")
-    sentence_inp    := Func("@Inp").Bind("Sentence")
-    en_ru_q_inp     := Func("@Inp").Bind(Func("LayoutSwitch").Bind("qphyx_en_ru"))
-    ru_en_q_inp     := Func("@Inp").Bind(Func("LayoutSwitch").Bind("qphyx_ru_en"))
-    en_ru_l_inp     := Func("@Inp").Bind(Func("LayoutSwitch").Bind("qwerty_en_ru"))
-    ru_en_l_inp     := Func("@Inp").Bind(Func("LayoutSwitch").Bind("qwerty_ru_en"))
-    en_ru_t_inp     := Func("@Inp").Bind(Func("LayoutSwitch").Bind("translit_en_ru"))
-    ru_en_t_inp     := Func("@Inp").Bind(Func("LayoutSwitch").Bind("translit_ru_en"))
-    calc_expr_inp   := Func("@Inp").Bind("Execute")
-    format_time_inp := Func("@Inp").Bind("DatetimeFormat")
-    Menu, Inp, Add, Nor&malize,   % normalize_inp
-    Menu, Inp, Add, &Sentence,    % sentence_inp
-    Menu, Inp, Add, &Capitalized, % capitaliz_inp
-    Menu, Inp, Add, &Lowercase,   % lowercase_inp
-    Menu, Inp, Add, &Uppercase,   % uppercase_inp
-    Menu, Inp, Add, &Inverted,    % inverted_inp
-    Menu, Inp, Add
-    Menu, Inp, Add, En-Ru &qphyx switch,    % en_ru_q_inp
-    Menu, Inp, Add, Ru-En q&phyx switch,    % ru_en_q_inp
-    Menu, Inp, Add, &En-Ru qwerty switch,   % en_ru_l_inp
-    Menu, Inp, Add, &Ru-En qwerty switch,   % ru_en_l_inp
-    Menu, Inp, Add, E&n-Ru transliteration, % en_ru_t_inp
-    Menu, Inp, Add, Ru-En transliterati&on, % ru_en_t_inp
-    Menu, Inp, Add
-    Menu, Inp, Add, C&alculate the expression, % calc_expr_inp
-    Menu, Inp, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_inp
-    ;currency converter submenu
-        IniRead, section, %INI%, CurrencyPairs
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            currencies := StrSplit(values[1], ":")
-            paste_inp_cur%ind% := Func("@Inp")
-                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
-            Menu, ConvI, Add, % values[2], % paste_inp_cur%ind%
-            If (SubStr(currencies[2], 4, 1) == "|")
-            {
-                Menu, ConvI, Add
-            }
-        }
-        Menu, ConvI, Add
-        IniRead, section, %INI%, ToCurrency
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            unk_to_%values1%_p_i := Func("@Inp").Bind(Func("UnknownCurrency").Bind(values[1]))
-            Menu, ConvI, Add, % values[2], % unk_to_%values1%_p_i
-        }
-        Menu, ConvI, Add
-        Menu, ConvI, Add, &Manage currencies, :ManageCurrency
-    Menu, Inp, Add, Currenc&y converter, :ConvI
 Menu, Paste, Add, &Input text to transform, :Inp
 Menu, Paste, Add
 
@@ -290,42 +220,9 @@ Menu, Paste, Add, Saved &values, :Values
     Menu, Emoji, Add, ༼ ༎ຶ ෴ ༎ຶ༽ &Upset, Emoji
 Menu, Paste, Add, &Emoji, :Emoji
 
-;time submenu
-    time_pst     := Func("@Clip").Bind(Func("Datetime").Bind("hh:mm:ss tt"))
-    date_pst     := Func("@Clip").Bind(Func("Datetime").Bind("MMMM dd"))
-    datetime_pst := Func("@Clip").Bind(Func("Datetime").Bind("dddd, MMMM dd yyyy hh:mm:ss tt"))
-    new_time_pst := Func("@Clip").Bind("DecimalTime")
-    new_date_pst := Func("@Clip").Bind("HexalDate")
-    new_datetime := Func("@Clip").Bind("NewDatetime")
-    Menu, DatetimeP, Add, &Time, % time_pst
-    Menu, DatetimeP, Add, &Date, % date_pst
-    Menu, DatetimeP, Add, DateTi&me, % datetime_pst
-    Menu, DatetimeP, Add, De&cimal time, % new_time_pst
-    Menu, DatetimeP, Add, &Hexal date,   % new_date_pst
-    Menu, DatetimeP, Add, &New datetime, % new_datetime
-Menu, Paste, Add, &Datetime, :DatetimeP
-
-;exchange rates submenu
-    IniRead, section, %INI%, CurrencyPairs
-    For ind, pair in StrSplit(section, "`n")
-    {
-        values := StrSplit(pair, "=")
-        currencies := StrSplit(values[1], ":")
-        paste_rates_cur%ind% := Func("@Clip")
-            .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3)))
-        Menu, RatesP, Add, % values[2], % paste_rates_cur%ind%
-        If (SubStr(currencies[2], 4, 1) == "|")
-        {
-            Menu, RatesP, Add
-        }
-    }
-    Menu, RatesP, Add
-    Menu, RatesP, Add, &Manage currencies, :ManageCurrency
-Menu, Paste, Add, E&xchange rate, :RatesP
-
-;weather
-weather_pst := Func("@Clip").Bind(Func("Weather").Bind(CITY))
-Menu, Paste, Add, Current &weather, % weather_pst
+Menu, Paste, Add, &Datetime, :DatetimeClip
+Menu, Paste, Add, E&xchange rate, :RatesClip
+Menu, Paste, Add, Current &weather, % weather_Clip
 
 
 ;===============================================================================================
@@ -336,227 +233,22 @@ Menu, Func, Add, Message menu, Pass
 Menu, Func, ToggleEnable, Message menu
 Menu, Func, Icon, Message menu, %A_AhkPath%, -207
 
-;"clipboard text as input; message box as output" submenu
-    normalize_c_msg   := Func("@ClipMsg").Bind("Normalize")
-    capitaliz_c_msg   := Func("@ClipMsg").Bind("Capitalized")
-    lowercase_c_msg   := Func("@ClipMsg").Bind("Lowercase")
-    uppercase_c_msg   := Func("@ClipMsg").Bind("Uppercase")
-    inverted_c_msg    := Func("@ClipMsg").Bind("Inverted")
-    sentence_c_msg    := Func("@ClipMsg").Bind("Sentence")
-    en_ru_q_c_msg     := Func("@ClipMsg").Bind(Func("LayoutSwitch").Bind("qphyx_en_ru"))
-    ru_en_q_c_msg     := Func("@ClipMsg").Bind(Func("LayoutSwitch").Bind("qphyx_ru_en"))
-    en_ru_l_c_msg     := Func("@ClipMsg").Bind(Func("LayoutSwitch").Bind("qwerty_en_ru"))
-    ru_en_l_c_msg     := Func("@ClipMsg").Bind(Func("LayoutSwitch").Bind("qwerty_ru_en"))
-    en_ru_t_c_msg     := Func("@ClipMsg").Bind(Func("LayoutSwitch").Bind("translit_en_ru"))
-    ru_en_t_c_msg     := Func("@ClipMsg").Bind(Func("LayoutSwitch").Bind("translit_ru_en"))
-    calc_expr_c_msg   := Func("@ClipMsg").Bind("Execute")
-    format_time_c_msg := Func("@ClipMsg").Bind("DatetimeFormat")
-    Menu, ClipMsg, Add, Nor&malize,   % normalize_c_msg
-    Menu, ClipMsg, Add, &Sentence,    % sentence_c_msg
-    Menu, ClipMsg, Add, &Capitalized, % capitaliz_c_msg
-    Menu, ClipMsg, Add, &Lowercase,   % lowercase_c_msg
-    Menu, ClipMsg, Add, &Uppercase,   % uppercase_c_msg
-    Menu, ClipMsg, Add, &Inverted,    % inverted_c_msg
-    Menu, ClipMsg, Add
-    Menu, ClipMsg, Add, En-Ru &qphyx switch,    % en_ru_q_c_msg
-    Menu, ClipMsg, Add, Ru-En q&phyx switch,    % ru_en_q_c_msg
-    Menu, ClipMsg, Add, &En-Ru qwerty switch,   % en_ru_l_c_msg
-    Menu, ClipMsg, Add, &Ru-En qwerty switch,   % ru_en_l_c_msg
-    Menu, ClipMsg, Add, E&n-Ru transliteration, % en_ru_t_c_msg
-    Menu, ClipMsg, Add, Ru-En transliterati&on, % ru_en_t_c_msg
-    Menu, ClipMsg, Add
-    Menu, ClipMsg, Add, C&alculate the expression, % calc_expr_c_msg
-    Menu, ClipMsg, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_c_msg
-    ;currency converter submenu
-        IniRead, section, %INI%, CurrencyPairs
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            currencies := StrSplit(values[1], ":")
-            message_clip_cur%ind% := Func("@ClipMsg")
-                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
-            Menu, ConvMC, Add, % values[2], % message_clip_cur%ind%
-            If (SubStr(currencies[2], 4, 1) == "|")
-            {
-                Menu, ConvMC, Add
-            }
-        }
-        Menu, ConvMC, Add
-        IniRead, section, %INI%, ToCurrency
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            unk_to_%values1%_m_c := Func("@ClipMsg").Bind(Func("UnknownCurrency").Bind(values[1]))
-            Menu, ConvMC, Add, % values[2], % unk_to_%values1%_m_c
-        }
-        Menu, ConvMC, Add
-        Menu, ConvMC, Add, &Manage currencies, :ManageCurrency
-    Menu, ClipMsg, Add, Currenc&y converter, :ConvMC
 Menu, Func, Add, &Clipboard text transform, :ClipMsg
-
-;"selected text as input; message box as output" submenu
-    normalize_s_msg   := Func("@SelMsg").Bind("Normalize")
-    capitaliz_s_msg   := Func("@SelMsg").Bind("Capitalized")
-    lowercase_s_msg   := Func("@SelMsg").Bind("Lowercase")
-    uppercase_s_msg   := Func("@SelMsg").Bind("Uppercase")
-    inverted_s_msg    := Func("@SelMsg").Bind("Inverted")
-    sentence_s_msg    := Func("@SelMsg").Bind("Sentence")
-    en_ru_q_s_msg     := Func("@SelMsg").Bind(Func("LayoutSwitch").Bind("qphyx_en_ru"))
-    ru_en_q_s_msg     := Func("@SelMsg").Bind(Func("LayoutSwitch").Bind("qphyx_ru_en"))
-    en_ru_l_s_msg     := Func("@SelMsg").Bind(Func("LayoutSwitch").Bind("qwerty_en_ru"))
-    ru_en_l_s_msg     := Func("@SelMsg").Bind(Func("LayoutSwitch").Bind("qwerty_ru_en"))
-    en_ru_t_s_msg     := Func("@SelMsg").Bind(Func("LayoutSwitch").Bind("translit_en_ru"))
-    ru_en_t_s_msg     := Func("@SelMsg").Bind(Func("LayoutSwitch").Bind("translit_ru_en"))
-    calc_expr_s_msg   := Func("@SelMsg").Bind("Execute")
-    format_time_s_msg := Func("@SelMsg").Bind("DatetimeFormat")
-    Menu, SelMsg, Add, Nor&malize,   % normalize_s_msg
-    Menu, SelMsg, Add, &Sentence,    % sentence_s_msg
-    Menu, SelMsg, Add, &Capitalized, % capitaliz_s_msg
-    Menu, SelMsg, Add, &Lowercase,   % lowercase_s_msg
-    Menu, SelMsg, Add, &Uppercase,   % uppercase_s_msg
-    Menu, SelMsg, Add, &Inverted,    % inverted_s_msg
-    Menu, SelMsg, Add
-    Menu, SelMsg, Add, En-Ru &qphyx switch,    % en_ru_q_s_msg
-    Menu, SelMsg, Add, Ru-En q&phyx switch,    % ru_en_q_s_msg
-    Menu, SelMsg, Add, &En-Ru qwerty switch,   % en_ru_l_s_msg
-    Menu, SelMsg, Add, &Ru-En qwerty switch,   % ru_en_l_s_msg
-    Menu, SelMsg, Add, E&n-Ru transliteration, % en_ru_t_s_msg
-    Menu, SelMsg, Add, Ru-En transliterati&on, % ru_en_t_s_msg
-    Menu, SelMsg, Add
-    Menu, SelMsg, Add, C&alculate the expression, % calc_expr_s_msg
-    Menu, SelMsg, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_s_msg
-    ;currency converter submenu
-        IniRead, section, %INI%, CurrencyPairs
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            currencies := StrSplit(values[1], ":")
-            message_sel_cur%ind% := Func("@SelMsg")
-                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
-            Menu, ConvMS, Add, % values[2], % message_sel_cur%ind%
-            If (SubStr(currencies[2], 4, 1) == "|")
-            {
-                Menu, ConvMS, Add
-            }
-        }
-        Menu, ConvMS, Add
-        IniRead, section, %INI%, ToCurrency
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            unk_to_%values1%_m_s := Func("@SelMsg").Bind(Func("UnknownCurrency").Bind(values[1]))
-            Menu, ConvMS, Add, % values[2], % unk_to_%values1%_m_s
-        }
-        Menu, ConvMS, Add
-        Menu, ConvMS, Add, &Manage currencies, :ManageCurrency
-    Menu, SelMsg, Add, Currenc&y converter, :ConvMS
 Menu, Func, Add, &Selected text transform, :SelMsg
-
-;"input box as input; message box as output" submenu
-    normalize_i_msg   := Func("@InpMsg").Bind("Normalize")
-    capitaliz_i_msg   := Func("@InpMsg").Bind("Capitalized")
-    lowercase_i_msg   := Func("@InpMsg").Bind("Lowercase")
-    uppercase_i_msg   := Func("@InpMsg").Bind("Uppercase")
-    inverted_i_msg    := Func("@InpMsg").Bind("Inverted")
-    sentence_i_msg    := Func("@InpMsg").Bind("Sentence")
-    en_ru_q_i_msg     := Func("@InpMsg").Bind(Func("LayoutSwitch").Bind("qphyx_en_ru"))
-    ru_en_q_i_msg     := Func("@InpMsg").Bind(Func("LayoutSwitch").Bind("qphyx_ru_en"))
-    en_ru_l_i_msg     := Func("@InpMsg").Bind(Func("LayoutSwitch").Bind("qwerty_en_ru"))
-    ru_en_l_i_msg     := Func("@InpMsg").Bind(Func("LayoutSwitch").Bind("qwerty_ru_en"))
-    en_ru_t_i_msg     := Func("@InpMsg").Bind(Func("LayoutSwitch").Bind("translit_en_ru"))
-    ru_en_t_i_msg     := Func("@InpMsg").Bind(Func("LayoutSwitch").Bind("translit_ru_en"))
-    calc_expr_i_msg   := Func("@InpMsg").Bind("Execute")
-    format_time_i_msg := Func("@InpMsg").Bind("DatetimeFormat")
-    Menu, InpMsg, Add, Nor&malize,   % normalize_i_msg
-    Menu, InpMsg, Add, &Sentence,    % sentence_i_msg
-    Menu, InpMsg, Add, &Capitalized, % capitaliz_i_msg
-    Menu, InpMsg, Add, &Lowercase,   % lowercase_i_msg
-    Menu, InpMsg, Add, &Uppercase,   % uppercase_i_msg
-    Menu, InpMsg, Add, &Inverted,    % inverted_i_msg
-    Menu, InpMsg, Add
-    Menu, InpMsg, Add, En-Ru &qphyx switch,    % en_ru_q_i_msg
-    Menu, InpMsg, Add, Ru-En q&phyx switch,    % ru_en_q_i_msg
-    Menu, InpMsg, Add, &En-Ru qwerty switch,   % en_ru_l_i_msg
-    Menu, InpMsg, Add, &Ru-En qwerty switch,   % ru_en_l_i_msg
-    Menu, InpMsg, Add, E&n-Ru transliteration, % en_ru_t_i_msg
-    Menu, InpMsg, Add, Ru-En transliterati&on, % ru_en_t_i_msg
-    Menu, InpMsg, Add
-    Menu, InpMsg, Add, C&alculate the expression, % calc_expr_i_msg
-    Menu, InpMsg, Add, &Format Time (e.g. "dd/MM" to "26/03"), % format_time_i_msg
-    ;currency converter submenu
-        IniRead, section, %INI%, CurrencyPairs
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            currencies := StrSplit(values[1], ":")
-            message_inp_cur%ind% := Func("@InpMsg")
-                .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
-            Menu, ConvMI, Add, % values[2], % message_inp_cur%ind%
-            If (SubStr(currencies[2], 4, 1) == "|")
-            {
-                Menu, ConvMI, Add
-            }
-        }
-        Menu, ConvMI, Add
-        IniRead, section, %INI%, ToCurrency
-        For ind, pair in StrSplit(section, "`n")
-        {
-            values := StrSplit(pair, "=")
-            unk_to_%values1%_m_i := Func("@InpMsg").Bind(Func("UnknownCurrency").Bind(values[1]))
-            Menu, ConvMI, Add, % values[2], % unk_to_%values1%_m_i
-        }
-        Menu, ConvMI, Add
-        Menu, ConvMI, Add, &Manage currencies, :ManageCurrency
-    Menu, InpMsg, Add, Currenc&y converter, :ConvMI
 Menu, Func, Add, &Input text to transform, :InpMsg
 Menu, Func, Add
 
-;time submenu
-    time_msg     := Func("@ClipMsg").Bind(Func("Datetime").Bind("hh:mm:ss tt"))
-    date_msg     := Func("@ClipMsg").Bind(Func("Datetime").Bind("MMMM dd"))
-    dt_msg       := Func("@ClipMsg").Bind(Func("Datetime").Bind("dddd, MMMM dd yyyy hh:mm:ss tt"))
-    new_time_msg := Func("@ClipMsg").Bind("DecimalTime")
-    new_date_msg := Func("@ClipMsg").Bind("HexalDate")
-    new_dt_msg   := Func("@ClipMsg").Bind("NewDatetime")
-    Menu, DatetimeM, Add, &Time, % time_msg
-    Menu, DatetimeM, Add, &Date, % date_msg
-    Menu, DatetimeM, Add, DateTi&me, % dt_msg
-    Menu, DatetimeM, Add, De&cimal time, % new_time_msg
-    Menu, DatetimeM, Add, &Hexal date,   % new_date_msg
-    Menu, DatetimeM, Add, &New datetime, % new_dt_msg
-Menu, Func, Add, &Datetime, :DatetimeM
-
-;exchange rates submenu
-    IniRead, section, %INI%, CurrencyPairs
-    For ind, pair in StrSplit(section, "`n")
-    {
-        values := StrSplit(pair, "=")
-        currencies := StrSplit(values[1], ":")
-        message_rates_cur%ind% := Func("@ClipMsg")
-            .Bind(Func("ExchRates").Bind(currencies[1], SubStr(currencies[2], 1, 3), 0))
-        Menu, RatesM, Add, % values[2], % message_rates_cur%ind%
-        If (SubStr(currencies[2], 4, 1) == "|")
-        {
-            Menu, RatesM, Add
-        }
-    }
-    Menu, RatesM, Add
-    Menu, RatesM, Add, &Manage currencies, :ManageCurrency
-Menu, Func, Add, E&xchange rate, :RatesM
+Menu, Func, Add, &Datetime, :DatetimeClipMsg
+Menu, Func, Add, E&xchange rate, :RatesClipMsg
 
 ;other
-;;weather
-weather_msg := Func("@ClipMsg").Bind(Func("Weather").Bind(CITY))
-Menu, Func, Add, Current &weather, % weather_msg
+Menu, Func, Add, Current &weather, % weather_ClipMsg
 
-;;reminder
 Menu, Func, Add, &Reminder, Reminder
 
-;;compare
 compare_msg := Func("Compare")
 Menu, Func, Add, C&ompare selected with clipboard, % compare_msg
 
-;;global MUS_PAUSE_DELAY int
 Menu, Func, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
 
 
@@ -575,9 +267,9 @@ Menu, Tray, Add, &Clipboard text transform, :ClipMsg
 Menu, Tray, Add, &Selected text transform, :SelMsg
 Menu, Tray, Add, &Input text to transform, :InpMsg
 Menu, Tray, Add
-Menu, Tray, Add, &Datetime, :DatetimeM
-Menu, Tray, Add, E&xchange rate, :RatesM
-Menu, Tray, Add, Current &weather, % weather_msg
+Menu, Tray, Add, &Datetime, :DatetimeClipMsg
+Menu, Tray, Add, E&xchange rate, :RatesClipMsg
+Menu, Tray, Add, Current &weather, % weather_ClipMsg
 Menu, Tray, Add, &Reminder, Reminder
 Menu, Tray, Add
 Menu, Tray, Add
@@ -585,7 +277,7 @@ Menu, Tray, Add, Settings, Pass
 Menu, Tray, ToggleEnable, Settings
 Menu, Tray, Icon, Settings, %A_AhkPath%, -206
 Menu, Tray, Add, &Auto-stop music on AFK delay (now is %MUS_PAUSE_DELAY%m), MusTimer
-Menu, Tray, Add, Disa&ble menu (ctrl+sh+leader to toggle), DisableToggle
+Menu, Tray, Add, Disa&ble menu (ctrl+sh+leader to toggle), DisabledToggle
 Menu, Tray, Add, &Exit, Exit
 
 
@@ -596,16 +288,18 @@ Menu, Tray, Add, &Exit, Exit
 @Clip(func, params*)
 {
     result := %func%(params)
-    SendInput {Raw}%result%
+    SendInput, {Raw}%result%
 }
 
 @Sel(func, params*)
 {
     saved_value := Clipboard
-    SendInput ^{SC02E}
+    Clipboard := ""
+    SendInput, ^{SC02E}
     Sleep, 33
     result := %func%(params)
-    SendInput {Raw}%result%
+    SendInput, {Raw}%result%
+    Sleep, 33
     Clipboard := saved_value
 }
 
@@ -615,9 +309,12 @@ Menu, Tray, Add, &Exit, Exit
     If !ErrorLevel
     {
         saved_value := Clipboard
+        Sleep, 33
         Clipboard := user_input
+        Sleep, 33
         result := %func%(params)
-        SendInput {Raw}%result%
+        SendInput, {Raw}%result%
+        Sleep, 33
         Clipboard := saved_value
     }
 }
@@ -635,10 +332,12 @@ Menu, Tray, Add, &Exit, Exit
 @SelMsg(func, params*)
 {
     saved_value := Clipboard
-    SendInput ^{SC02E}
-    Sleep, 1
+    Clipboard := ""
+    SendInput, ^{SC02E}
+    Sleep, 33
     Clipboard := Trim(Clipboard)
     result := %func%(params)
+    Sleep, 33
     MsgBox, 260, %func%, %result% `nSave result to clipboard?
     IfMsgBox Yes
     {
@@ -656,8 +355,11 @@ Menu, Tray, Add, &Exit, Exit
     If !ErrorLevel
     {
         saved_value := Clipboard
+        Sleep, 33
         Clipboard := user_input
+        Sleep, 33
         result := %func%(params)
+        Sleep, 33
         MsgBox, 260, %func%, %result% `nSave result to clipboard?
         IfMsgBox Yes
         {
@@ -677,7 +379,7 @@ Menu, Tray, Add, &Exit, Exit
 
 SendValue(value)
 {
-    SendInput %value%
+    SendInput, %value%
 }
 
 ;detect current spotify process
@@ -705,9 +407,10 @@ SpotifyDetectProcessId()
 Compare()
 {
     saved_value := Clipboard
-    SendInput ^{SC02E}
-    Sleep, 1
+    SendInput, ^{SC02E}
+    Sleep, 33
     result := (Clipboard == saved_value) ? "Identical" : "Not identical"
+    Sleep, 33
     Clipboard := saved_value
     Msgbox, , Message, %result%
 }
@@ -732,7 +435,7 @@ Execute() ; https://www.autohotkey.com/boards/viewtopic.php?p=221460#p221460
 
 Emoji(item_name)
 {
-    SendInput % RegExReplace(item_name, "i)[ a-z0-9&]*$")
+    SendInput, % RegExReplace(item_name, "i)[ a-z0-9&]*$")
 }
 
 Reminder()
@@ -889,7 +592,7 @@ If you enter existing pair (in the same sequence) it will be overwritten without
                 }
                 Else
                 {
-                    StringLower user_input, user_input
+                    StringLower, user_input, user_input
                     IniWrite, %user_input_2%, %INI%, CurrencyPairs, %user_input%
                     MsgBox, Success!
                     Run, menu%EXT%
@@ -919,7 +622,7 @@ If you set additional separator with "|" it also must be entered here
         }
         Else
         {
-            StringLower user_input, user_input
+            StringLower, user_input, user_input
             IniDelete, %INI%, CurrencyPairs, %user_input%
             If !ErrorLevel
             {
@@ -975,7 +678,7 @@ If you enter existing value it will be overwritten without warning!
                 }
                 Else
                 {
-                    StringLower user_input, user_input
+                    StringLower, user_input, user_input
                     IniWrite, %user_input_2%, %INI%, ToCurrency, %user_input%
                     MsgBox, Success!
                     Run, menu%EXT%
@@ -1000,7 +703,7 @@ DeleteCurrency()
         }
         Else
         {
-            StringLower user_input, user_input
+            StringLower, user_input, user_input
             IniDelete, %INI%, ToCurrency, %user_input%
             If !ErrorLevel
             {
@@ -1039,7 +742,7 @@ Weather(q_city)
     temp := RegExReplace(web_request.ResponseText, ".+""temp"":(-?\d+.\d+).+", "$u1")
     feel := RegExReplace(web_request.ResponseText, ".+""feels_like"":(-?\d+.\d+).+", "$u1")
     wind := RegExReplace(web_request.ResponseText, ".+""speed"":(\d+.\d+).+", "$u1")
-    Return stat "`n" temp "° (" feel "°)`n" wind "m/s"
+    Return stat . "`n" . temp . "° (" . feel . "°)`n" . wind . "m/s"
 }
 
 ExchRates(base, symbol, amount:=1)
@@ -1054,7 +757,7 @@ ExchRates(base, symbol, amount:=1)
     }
     web_request := ComObjCreate("WinHttp.WinHttpRequest.5.1")
     web_request.Open("GET", "https://api.getgeoapi.com/api/v2/currency/convert?api_key="
-        . CURRENCY_KEY "&from=" base "&to=" symbol "&amount=" amount "&format=json")
+        . CURRENCY_KEY . "&from=" . base . "&to=" . symbol . "&amount=" . amount . "&format=json")
     web_request.Send()
     Return Round(RegExReplace(web_request.ResponseText
         , ".+""rate_for_amount"":""(\d+\.\d+)"".+", "$u1"), 2)
@@ -1066,176 +769,33 @@ UnknownCurrency(base)
     {
         Return "Not found api key in environment variables (search 'GETGEOAPI')"
     }
-    currencies1 := [[["XCD","EC$","$EC","carib"],"East Caribbean dollar"]
-        ,[["COP","COL$","$COL","colom"],"Colombian peso"]
-        ,[["CAD","CA$","$CA","can"],"Canadian dollar"]
-        ,[["NIO","C$","$C","doba","nicar"],"Nicaraguan córdoba"]
-        ,[["AUD","A$","$A","austral"],"Australian dollar"]
-        ,[["BMD","BD$","$BD","berm"],"Bermudian dollar"]
-        ,[["BND","Br$","$Br","brun"],"Brunei dollar"]
-        ,[["BSD","B$","$B","baham"],"Bahamian dollar"]
-        ,[["GYD","G$","$G","GY$","guyan"],"Guyanese dollar"]
-        ,[["JMD","J$","$J","jam"],"Jamaican dollar"]
-        ,[["LRD","L$","LD$","$L","liber"],"Liberian dollar"]
-        ,[["CUP","$MN","MN$","cub"],"Cuban peso"]
-        ,[["TWD","NT$","$NT","圓","taiw"],"New Taiwan dollar"]
-        ,[["NAD","N$","$N","nami","namb"],"Namibian dollar"]
-        ,[["WST","SAT","WS$","$WS","samo","tal","tāl"],"Samoan tālā"]
-        ,[["SBD","SI$","$SI","solom"],"Solomon Islands dollar"]
-        ,[["SRD","Sr$","$Sr","sur"],"Surinamese dollar"]
-        ,[["SGD","S$","$S","SG","sing"],"Singaporean dollar"]
-        ,[["DOP","RD$","$RD","dom"],"Dominican peso"]
-        ,[["UYU","U$","$U","urug"],"Uruguayan peso"]
-        ,[["BRL","R$","$R","rea","bra"],"Brazilian real"]
-        ,[["TOP","T$","$T","PT","paʻanga","paanga"],"Tongan paʻanga"]
-        ,[["USD","Dol","$","states"],"United States dollar"]
-        ,[["THB","฿","baht","thai"],"Thai baht"]
-        ,[["PAB","B/.","balboa","panam"],"Panamanian balboa"]
-        ,[["VES","Bs.","var","venez"],"Venezuelan bolívar"]
-        ,[["GHS","GH₵","cedi","ghana"],"Ghana cedi"]
-        ,[["BTN","Nu.","ngultrum","bhutan"],"Bhutanese ngultrum"]
-        ,[["CRC","₡","colón","colon","costa"," rica","-rica"],"Costa Rican colón"]
-        ,[["MKD","ден","den","mace"],"Macedonian denar"]
-        ,[["IQD","د.ع","I.Q.D.","iraq"],"Iraqi dinar"]
-        ,[["KWD","د.ك","K.D.","kuw"],"Kuwaiti dinar"]
-        ,[["RSD","дин","din","serb"],"Serbian dinar"]
-        ,[["AED","د.إ","uae","arab","emir"],"United Arab Emirates dirham"]]
-    currencies2 := [[["BBD","Bds","barb"],"Barbadian dollar"]
-        ,[["ARS","arg"],"Argentine peso"]
-        ,[["CLP","chil"],"Chilean peso"]
-        ,[["MXN","Mex"],"Mexican peso"]
-        ,[["VND","₫","đ","dồng","dong","viet"],"Vietnamese đồng"]
-        ,[["AMD","֏","դր","dram","arm"],"Armenian dram"]
-        ,[["CVE","Esc","cape","verd"],"Cape Verdean escudo"]
-        ,[["EUR","€"],"Euro"]
-        ,[["BIF","FBu","bur"],"Burundian franc"]
-        ,[["XAF","FCFA"],"Central African CFA franc"]
-        ,[["XOF","CFA"],"West African CFA franc"]
-        ,[["DJF","Fdj","dji"],"Djiboutian franc"]
-        ,[["CHF","fr.","swis"],"Swiss franc"]
-        ,[["PYG","₲","guar","parag"],"Paraguayan guaraní"]
-        ,[["UAH","₴","грн","hrn","грив","hry","ukr","укр"],"Ukrainian hryvnia"]
-        ,[["LAK","₭","kip","lao"],"Lao kip"]
-        ,[["CZK","Kč","korun","cze"],"Czech koruna"]
-        ,[["DKK","danis"],"Danish krone"]
-        ,[["NOK","norw"],"Norwegian krone"]
-        ,[["SEK","swe"],"Swedish krona"]
-        ,[["ISK","ice"],"Icelandic króna"]
-        ,[["FOK","far"],"Faroese króna"]
-        ,[["PGK","kin","pap","png"],"Papua New Guinean kina"]
-        ,[["MWK","malaw"],"Malawian kwacha"]
-        ,[["GEL","₾","ლ","lari","geor"],"Georgian lari"]
-        ,[["ALL","lek","alba"],"Albanian lek"]
-        ,[["RON","rom"],"Romanian leu"]
-        ,[["MDL","mol"],"Moldovan leu"]
-        ,[["HNL","lempir","hond"],"Honduran lempira"]
-        ,[["BGN","лв","lev","bul"],"Bulgarian lev"]
-        ,[["SZL","lil","swaz"],"Swazi lilangeni"]
-        ,[["LSL","loti","leso"],"Lesotho loti"]
-        ,[["AZN","₼","manat","azer"],"Azerbaijani manat"]
-        ,[["ERN","Nkf","ናቕፋ","ناكفا","nakf","erit"],"Eritrean nakfa"]
-        ,[["NGN","₦","nair","nig"],"Nigerian naira"]
-        ,[["MOP","patac","maca"],"Macanese pataca"]
-        ,[["SSP","SS£"],"South Sudanese pound"]
-        ,[["SDG","£SD","ج.س"],"Sudanese pound"]
-        ,[["IRR","﷼","iran"],"Iranian rial"]
-        ,[["OMR","ر.ع.","R.O."],"Omani rial"]
-        ,[["SAR","﷼","ر.س","sau"],"Saudi riyal"]]
-    currencies3 := [[["YER","ر.ي","﷼","yem"],"Yemeni rial"]
-        ,[["KHR","៛","cam"],"Cambodian riel"]
-        ,[["INR","₨","₹","indi"],"Indian rupee"]
-        ,[["MUR","mauritian"],"Mauritian rupee"]
-        ,[["NPR","nep"],"Nepalese rupee"]
-        ,[["PKR","pak"],"Pakistani rupee"]
-        ,[["LKR","ரூ","රු","sri","lank"],"Sri Lankan rupee"]
-        ,[["ILS","₪","NIS","she","isr"],"Israeli new shekel"]
-        ,[["TZS","TSh","tanz"],"Tanzanian shilling"]
-        ,[["SOS","Sh.So","ShSo","somal"],"Somali shilling"]
-        ,[["UGX","USh","uga"],"Ugandan shilling"]
-        ,[["XDR","SDR"],"Special drawing rights"]
-        ,[["KZT","₸","тен","teŋ","ten","kaz"],"Kazakhstani tenge"]
-        ,[["PEN","S/","sol","per"],"Peruvian sol"]
-        ,[["MNT","tug","tög","₮","төг","ᠲᠥᠭᠥᠷᠢᠭ","туг","mon"],"Mongolian tögrög"]
-        ,[["KRW","원","₩","won","south kor","s.kor"],"South Korean won (may be North)"]
-        ,[["KPW","north kor","n.kor"],"North Korean won"]
-        ,[["CNY","CN","圆","ren","RMB","yuan","Ұ","chin"],"Chinese Renminbi"]
-        ,[["JPY","¥","yen","円","jap"],"Japanese yen"]
-        ,[["AOA","Kz","kwanza","ango"],"Angolan kwanza"]
-        ,[["BDT","৳","Tk","টাকা","bang","tak"],"Bangladeshi taka"]
-        ,[["AWG","ANG","ƒ","Afl","NAf","flor","arub"],"Aruban florin"]
-        ,[["STN","Db","dobr","sao","tome","princ"],"São Tomé and Príncipe dobra"]
-        ,[["BYN","Br","bela","бел","б.р"],"Belarusian ruble"]
-        ,[["KGS","сом","som","С̲","кир","kyr","kir"],"Kyrgyzstani som"]
-        ,[["RUB","₽","р","rouble","rus"],"Russian rоuble"]
-        ,[["AFN","؋","Af"],"Afghan afghani"]
-        ,[["DZD","دج","DA","alg"],"Algerian dinar"]
-        ,[["BHD","BD",".د.ب","bahr"],"Bahraini dinar"]
-        ,[["TND","د.ت","DT","tunis"],"Tunisian dinar"]
-        ,[["MAD","د.م.","DH","moroc"],"Moroccan dirham"]
-        ,[["HUF","Ft","forint","hun"],"Hungarian forint"]
-        ,[["KMF","CF","como"],"Comorian franc"]
-        ,[["CDF","FC","cong"],"Congolese franc"]]
-    currencies4 := [[["GNF","FG","GFr"],"Guinean franc"]
-        ,[["HRK","kn","kun","cro"],"Croatian kuna"]
-        ,[["TRY","₺","TL","lir","tur"],"Turkish lira"]
-        ,[["BAM","KM","КМ","bos","her","b&h"],"Bosnia and Herzegovina convertible mark"]
-        ,[["MZN","MT","met","moz"],"Mozambican metical"]
-        ,[["ZMW","ZK","zam"],"Zambian kwacha"]
-        ,[["MRU","UM","ouguiya","mauritanian"],"Mauritanian ouguiya"]
-        ,[["EGP","E£","L.E.","ج.م","£E","egyp","egip"],"Egyptian pound"]
-        ,[["SYP","£S","LS","syr","sir"],"Syrian pound"]
-        ,[["QAR","QR","ر.ق","qat","kat"],"Qatari riyal"]
-        ,[["MVR","Rf","ރ","mald","ruf"],"Maldivian rufiyaa"]
-        ,[["MYR","RM","ring","malay","malas"],"Malaysian ringgit"]
-        ,[["SCR","SR","sey"],"Seychellois rupee"]
-        ,[["IDR","Rp","indo"],"Indonesian rupiah"]
-        ,[["VUV","VT","van","vat"],"Vanuatu vatu"]
-        ,[["PLN","zł","zl","pol"],"Polish złoty"]
-        ,[["NZD","NZ","zeal"],"New Zealand dollar"]
-        ,[["BZD","BZ","belize"],"Belizean dollar"]
-        ,[["KYD","CI","cay"],"Cayman Islands dollar"]
-        ,[["FJD","FJ","fij"],"Fiji dollar"]
-        ,[["HKD","HK","hong"],"Hong Kong dollar"]
-        ,[["TTD","TT","trin","tob","t&t"],"Trinidad and Tobago dollar"]
-        ,[["TVD","TV","tuval"],"Tuvaluan dollar"]
-        ,[["PHP","₱","P.","ph"],"Philippine peso"]
-        ,[["JOD","JD","jo"],"Jordanian dinar"]
-        ,[["LYD","LD","ل.د","liby","liv"],"Libyan dinar"]
-        ,[["RWG","FRw","R₣","rwa","rua"],"Rwandan franc"]
-        ,[["SLL","Le","sie"],"Sierra Leonean leone"]]
-    currencies5 := [[["LBP","ل.ل.","LL"],"Lebanese pound"]
-        ,[["GBP","£","FKP","GIP","GGP","JEP","IMP","SHP","pou","ster"],"Pound (sterling)"]
-        ,[["BWP","P","bot"],"Botswana pula"]
-        ,[["MGA","Ari","malag"],"Malagasy ariary"]
-        ,[["ZAR","R"],"South African rand"]
-        ,[["GMD","D","gamb"],"Gambian dalasi"]
-        ,[["GTQ","Q","guat"],"Guatemalan quetzal"]
-        ,[["MMK","Ks","kyat","mya"],"Myanmar kyat"]
-        ,[["KES","K"],"Kenyan shilling"]
-        ,[["HTG","G","hai"],"Haitian gourde"]]
+    currencies := []
+    IniRead, section, currencies.ini, currencies
+    For ind, pair in StrSplit(section, "`n")
+    {
+        values := StrSplit(pair, "=")
+        currencies.Push([StrSplit(values[2], ","), values[1]])
+    }
 
-    RegExMatch(Clipboard, "[\D]*(\d+(\.\d+){0,1})[\D]*", amount)
+    RegExMatch(Clipboard, "(\d+(\.\d+){0,1})", amount)
     If amount1
     {
-        Loop 5
+        For ind, elem in currencies
         {
-            For ind, elem in currencies%A_Index%
+            For _, var in elem[1]
             {
-                For _, var in elem[1]
+                If InStr(Clipboard, var)
                 {
-                    If InStr(Clipboard, var)
-                    {
-                        web_request := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-                        web_request.Open("GET"
-                            , "https://api.getgeoapi.com/api/v2/currency/convert?api_key="
-                            . CURRENCY_KEY "&from=" elem[1][1] "&to=" base "&amount="
-                            . amount1 "&format=json")
-                        web_request.Send()
-                        result := amount1 " " elem[2] " to " base ": "
-                            . Round(RegExReplace(web_request.ResponseText
-                                , ".+""rate_for_amount"":""(\d+\.\d+)"".+", "$u1"), 2)
-                        Break 3
-                    }
+                    web_request := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+                    web_request.Open("GET"
+                        , "https://api.getgeoapi.com/api/v2/currency/convert?api_key="
+                        . CURRENCY_KEY . "&from=" . elem[1][1] . "&to=" . base . "&amount="
+                        . amount1 . "&format=json")
+                    web_request.Send()
+                    result := amount1 . " " . elem[2] . " to " . base . ": "
+                        . Round(RegExReplace(web_request.ResponseText
+                            , ".+""rate_for_amount"":""(\d+\.\d+)"".+", "$u1"), 2)
+                    Break 2
                 }
             }
         }
@@ -1268,6 +828,7 @@ DatetimeFormat()
 }
 
 
+;; concept briefly:
 ; 10 hours in a day (0-9), 100 minutes in a hour (00-99), 100 seconds in a minute (00-99).
 ; Second was accelerated by 100_000/86_400≈1.1574
 DecimalTime()
@@ -1276,49 +837,40 @@ DecimalTime()
     hours := Round(ms // 10000000)
     minutes := Round((ms - hours * 10000000) // 100000)
     seconds := Round((ms - hours * 10000000 - minutes * 100000) // 1000)
-    Return hours ":" minutes ":" seconds
+    Return hours . ":" . minutes . ":" . seconds
 }
 
-; 10 months in a year, 6 weeks in a month, 6 days in a week.
+; 10 months in a year (0-9), 6 weeks in a month (0-5), 6 days in a week (0-5).
 ; The last 5(6 if leap year) days of the year is a holiday week.
 ; New Year on the Winter solstice (dec 21-22, old style).
 HexalDate()
 {
-    If (!Mod(A_YYYY, 400) || !Mod(A_YYYY, 4) && Mod(A_YYYY, 100))
-    {
-        leap_mark := 1
-    }
-    Else
-    {
-        leap_mark := 0
-    }
-
+    leap_mark := (!Mod(A_YYYY, 400) || !Mod(A_YYYY, 4) && Mod(A_YYYY, 100)) ? 1 : 0
     If (A_YDay > 355+leap_mark)
     {
-        year := A_YYYY+1
-        day := A_YDay - 355 - leap_mark
+        year := A_YYYY + 1
+        day := A_YDay - 356 - leap_mark
     }
-    Else If (A_YDay > 349)
+    Else If (A_YDay > 350)
     {
-        year := A_YYYY+1
-        day := A_YDay - 360
-        Return year " holidays, " day
+        day := A_YDay - 351
+        Return A_YYYY . "–" . A_YYYY + 1 . " holidays, " . day . "/" . 4 + leap_mark
     }
     Else
     {
         year := A_YYYY
-        day := A_YDay + 10
+        day := A_YDay + 9
     }
 
     dd := Mod(day, 6)
     ww := Mod(day, 36) // 6
     mm := day // 36
-    Return mm "" ww "" dd ". " year
+    Return mm . ww . dd . ". " . year
 }
 
 NewDatetime()
 {
-    Return DecimalTime() " | " HexalDate()
+    Return DecimalTime() . " | " . HexalDate()
 }
 
 
@@ -1368,23 +920,7 @@ Uppercase()
 Inverted()
 {
     ; Go OR stAy  ?NoW I GOttA cHOoSE, and I’lL AccEpT YOur InVItatIOn TO thE BLuEs
-    result := ""
-    Loop % StrLen(Clipboard)
-    {
-        cur_char := Asc(SubStr(Clipboard, A_Index, 1))
-        If ((cur_char >= 65) && (cur_char <= 90))
-            || ((cur_char >= 1040) && (cur_char <= 1071))
-            result := result Chr(cur_char + 32)
-        Else If ((cur_char >= 97) && (cur_char <= 122))
-            || ((cur_char >= 1072) && (cur_char <= 1103))
-            result := result Chr(cur_char - 32)
-        Else If (cur_char == 1025)
-            result := result Chr(1105)
-        Else If (cur_char == 1105)
-            result := result Chr(1025)
-        Else
-            result := result Chr(Cur_char)
-    }
+    result := RegExReplace(Clipboard, "([a-zа-яё])|([A-ZА-ЯЁ])", "$U1$L2")
     Return result
 }
 
@@ -1452,12 +988,12 @@ LayoutSwitch(dict)
         {
             For ind, elem in %dict%[cur_char]
             {
-                result := result Chr(elem)
+                result := result . Chr(elem)
             }
         }
         Else
         {
-            result := result Chr(cur_char)
+            result := result . Chr(cur_char)
         }
     }
     Return result
@@ -1475,7 +1011,7 @@ Exit:
     ExitApp
 
 IdlePause:
-    IfGreater, A_TimeIdle, % MUS_PAUSE_DELAY * 60000, SendInput {SC124}
+    IfGreater, A_TimeIdle, % MUS_PAUSE_DELAY * 60000, SendInput, {SC124}
     Return
 
 SpotifyMute:
@@ -1485,17 +1021,15 @@ SpotifyMute:
         If ((title == "Advertisement") ^ !MUTE)
         {
             MUTE := !MUTE
-            Run %NIRCMD_FILE% setappvolume Spotify.exe %MUTE%
+            Run, %NIRCMD_FILE% setappvolume Spotify.exe %MUTE%
         }
     }
     Return
 
 
-;(\|), on a 102-key keyboards
-
-DisableToggle:
-    DISABLE := !DISABLE
-    If DISABLE
+DisabledToggle:
+    DISABLED := !DISABLED
+    If DISABLED
     {
         IfExist, disabled.ico
         {
@@ -1518,9 +1052,9 @@ DisableToggle:
     Return
 
 PasteMenu:
-    If DISABLE
+    If DISABLED
     {
-        SendInput {%MAIN_KEY%}
+        SendInput, {%MAIN_KEY%}
     }
     Else
     {
@@ -1529,9 +1063,9 @@ PasteMenu:
     Return
 
 MessageMenu:
-    If DISABLE
+    If DISABLED
     {
-        SendInput +{%MAIN_KEY%}
+        SendInput, +{%MAIN_KEY%}
     }
     Else
     {
