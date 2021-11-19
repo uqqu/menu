@@ -4,7 +4,6 @@ With this script you will get access to:
   * 15 transforming text functions of three categories
   * 5 easy data access functions
   * several other functions
-  * easy tuning [qPhyx](https://github.com/uqqu/layout)
 
 All functions available from the keyboard in two or three taps.
 
@@ -20,7 +19,7 @@ Output can be performed as text to input or to separate text message.
     * Normalize case and spaces
     <br>`Input:  " 	—	teST!?so ,i'M a test  	string	;and i’m too .  	"`
     <br>`Output: "— Test!? So, I'm a test string; and I’m too."`
-    * Normalize case (sentence function)
+    * Normalize case ("sentence" function)
     <br>`Input:  " 	—	teST!?so ,i'M a test  	string	;and i’m too .  	"`
     <br>`Output: " 	—	Test!?so ,i'm a test  	string;and I’m too .  	"`
     * Invert case
@@ -69,27 +68,16 @@ Output can be performed as text to input or to separate text message.
   * Minimalistic reminder
   * Text identity comparator
 
-### Qphyx management
-
-  * Change language mode (Latin and Cyrillic, separately)
-  * Toggle some options (dotted/dotless i; no-break space; esc as caps; numpad availability)
-  * Define user keys
-  * Set "long press" delay
-  * Disable/enable qPhyx completely
-
-> This submenu shown only if you use [qPhyx](https://github.com/uqqu/layout) project and set path to `qPhyx` folder in `config.ini`
-
 
 ## Installation
 
-> Windows only ¯\\\_(ツ)\_/¯
+> Windows only （＾～＾）
 
 1. *(optional)* Install <a href="https://www.autohotkey.com/">AHK</a>, if you want to use uncompiled version;
 2. Place [menu.exe](https://github.com/uqqu/menu/blob/master/menu.exe) or its uncompiled counterpart – [menu.ahk](https://github.com/uqqu/menu/blob/master/menu.ahk) in a folder of your choice and run first time;
 3. Edit generated `config.ini` near the `menu`;
 4. *(optional)* Get API key to convert currency from [getgeoapi](https://getgeoapi.com/) and add it to environment variables with `GETGEOAPI` name;
 5. *(optional)* Get API key to weather data from [openweathermap](https://openweathermap.org/) and add it to environment variables with `OPENWEATHERMAP` name;
-6. *(recommended)* Look at [qPhyx](https://github.com/uqqu/layout). If you would like to try, set path to `qPhyx` folder in `config.ini` near `menu`, and path to `menu` folder in `config.ini` near `qPhyx`.
 
 
 ## FAQ
