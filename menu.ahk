@@ -741,7 +741,7 @@ Weather(q_city)
     StringUpper stat, stat, T
     temp := RegExReplace(web_request.ResponseText, ".+""temp"":(-?\d+.\d+).+", "$u1")
     feel := RegExReplace(web_request.ResponseText, ".+""feels_like"":(-?\d+.\d+).+", "$u1")
-    wind := RegExReplace(web_request.ResponseText, ".+""speed"":(\d+.\d+).+", "$u1")
+    wind := RegExReplace(web_request.ResponseText, ".+""speed"":(\d+.\d+|\d+).+", "$u1")
     Return stat . "`n" . temp . "° (" . feel . "°)`n" . wind . "m/s"
 }
 
